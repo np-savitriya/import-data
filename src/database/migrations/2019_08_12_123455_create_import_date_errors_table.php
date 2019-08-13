@@ -18,7 +18,6 @@ class CreateImportDataErrorTable extends Migration
             $table->integer('module_id');
             $table->text('error_reason');
             $table->tinyInteger('duplicate_flag')->default(0);
-            $table->decimal('tax_amount',10, 2);
             $table->text('fields');
             $table->integer('created_by')->nullable();
             $table->integer('updated_by')->nullable();
@@ -28,7 +27,7 @@ class CreateImportDataErrorTable extends Migration
             $table->softDeletes();
 
 
-	    $table->index("module_id");
+	        $table->index("module_id");
         });
     }
 
