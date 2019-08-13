@@ -1,0 +1,40 @@
+{
+    "name": "import/import-data",
+    "description": "Package for import data from excel",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "nitin",
+            "email": "np@savitriya.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.0",
+        "illuminate/support": ">=5.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^6.5"
+    },
+    "autoload":{
+        "psr-4": {
+            "Import\\ImportData\\":"src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Import\\ImportData\\":"import-data/src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Import\\ImportData\\ImportDataServiceProvider"
+            ],
+            "aliases": {
+                "ImportData": "Import\\ImportData\\ImportDataFacade"
+            }
+        }
+    }
+}
