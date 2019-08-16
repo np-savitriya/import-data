@@ -15,149 +15,181 @@ use Import\ImportData\Module;
 use Import\ImportData\ImportError;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
+use App\User;
+use App\Models\Role;
+use App\Models\VehicleGroup;
+use App\Models\Location;
+use App\Models\Asset;
+use Illuminate\Support\Facades\Storage;
+
 
 class ImportDataController extends Controller
 {
-    public function importData($dataArr) {
+    public static function fetchExcelColumns($request) {
 
         $response = array();
-            $loggedInuser = $request->input('userId');
-            $file = $request->input('myFile');
-            $device = $request->input('device');
+            // $module = $file['module'];
+            $file = $request->file('myFile');
+            $mod = $request->input('module');
+            $fileName = $request->input('fileName');
             $unitNo = 0;
-            $userData = User::getUserwithTimezone($loggedInuser);
-            $usertimezone = $userData->time_zone;
-            if ( !isset($usertimezone) || $usertimezone == '' ) {
-                $usertimezone = 'PST8PDT';
-            }
            $notFoundArr = [];
-           
-            if ( $request->hasFile('myFile') && (strtolower($request->file('myFile')->clientExtension()) == 'xlsx' || strtolower($request->file('myFile')->clientExtension()) == 'xls')) {
-            $path = $request->file('myFile')->getRealPath();
-
-            if ( strtolower($request->file('myFile')->clientExtension()) == 'xls' ) {
-                
-                $fileType = \PHPExcel_IOFactory::identify($path);
-                
-                $objReader = \PHPExcel_IOFactory::createReader($fileType);
-                $objReader->setReadDataOnly(true);
-                $objPHPExcel = $objReader->load($path);
-
-                //if file exist delete it
-                if (file_exists(storage_path().'/export.xlsx')) unlink(storage_path().'/export.xlsx');
-
-                $writer = \PHPExcel_IOFactory::createWriter($objPHPExcel,"Excel2007");
-                $writer->save( storage_path().'/export.xlsx');
-                $path = storage_path()."/export.xlsx";
+           if(isset($fileName)){
+                if (file_exists(base_path('public') . "/exports/".$fileName)) {
+                    $file = file_get_contents(base_path('public') . "/exports/".$fileName);
+                    
+                }
             }
+                if ( isset($fileName) || $request->hasFile('myFile') && (strtolower($request->file('myFile')->clientExtension()) == 'xlsx' || strtolower($request->file('myFile')->clientExtension()) == 'xls')) {
+                    
+                    // $files = Storage::files(base_path('public') . "/exports/");
+                    
+                    if(!isset($fileName)){
+
+                        // $path = $file->getRealPath();
+                        if (!file_exists(base_path('public') . "/exports")) {
+                            mkdir(base_path('public') . "/exports", 0777, true);
+                        }
+                            // if ( strtolower($file->clientExtension()) == 'xls' ) {
+                    
+                            //     $fileType = \PHPExcel_IOFactory::identify($path);
+                                
+                            //     $objReader = \PHPExcel_IOFactory::createReader($fileType);
+                            //     $objReader->setReadDataOnly(true);
+                            //     $objPHPExcel = $objReader->load($path);
+
+                            //     //if file exist delete it
+                            //     if (file_exists(storage_path().'/'.$mod.'xlsx')) unlink(storage_path().'/'.$mod.'xlsx');
+
+                            //     $writer = \PHPExcel_IOFactory::createWriter($objPHPExcel,"Excel2007");
+                            //     $writer->save( storage_path().'/'.$mod.'xlsx');
+                            //     $path = storage_path().'/'.$mod.'xlsx';
+                            // }
             
+                            $fileName = "";
+                            $fileName = $file->getClientOriginalName();
+                            $fileName = $mod . "_" . round(microtime(true) * 1000) . "_" . $fileName;
+                            $fullPath = $file->move(base_path('public') . '/exports/', $fileName);
+                            
+                            // return $fileName;
+                                $response['code'] = 200;
+                                $response["status"] = "success";
+                                $response['message'] = 'FileName';
+                                $response['content'] = $fileName;
+                            
+                            return response($response, $response['code'])
+                                    ->header('Content_type', 'application/json');
+                    }
+
+            $path = base_path('public') . '/exports/'.$fileName;
             $reader = Excel::load($path)->get();
 
-            if (isset($reader[0])) {
+            // $singleRow = $reader->toArray(); // no need to parse whole sheet for the headings
+            $headings['headers'] = $reader->getHeading();
+            $headArr = [];
+            $excelArr = [];
+            // return $headings['headers'];
+            if(isset($headings['headers'][0])){
                 $i = 0;
-                foreach ($reader as $ts) {
-                    
-                    $asset = Asset::where('unit_no',$unitNo)->first();
-                    $measurement = MeasurementUnit::where('symbol','MLS')->first();
-                    if ( !$measurement ) {
-
-                        $measurement = new MeasurementUnit();
-                        $measurement->name = 'Miles';
-                        $measurement->symbol = 'MLS';
-                        $measurement->created_by = $loggedInuser;
-                        $measurement->updated_by = $loggedInuser;
-                        $measurement->save();
-                    }
-                    
-                    $section = SectionRate::where(strtolower('code'),'dist')->first();
-                    // $convertedTime = TimezoneHelper::ConvertTimezoneToAnotherTimezone($time,'Y-m-d H:i:s','UTC',$usertimezone);
-                    if ( isset($asset) ) {
-                        
-                        $odometerData = AssetOdometerReading::where('vehicle_id',$asset->id)
-                                                            ->where('reading_date',$time)
-                                                            ->first();
-                        
-                        if ( !$odometerData ) {
-
-                            $odometerData = new AssetOdometerReading();
-
-                            //convert user timezone to UTC
-                            $utcTime = TimezoneHelper::ConvertTimezoneToAnotherTimezone($time,'Y-m-d H:i:s', $usertimezone,'UTC');
-                            $odometerData->reading_date = $utcTime;
-
-                            //get customer id for vehicle on reading date with reference to contract
-                            $customerData = $this->reading->getCustomerIdFromVehicleIdAndReadingDate($asset->id,$utcTime);
-
-                            $odometerData->reading = $reading;
-                            $odometerData->vehicle_id = $asset->id;
-                            $odometerData->vom = $measurement->id;
-                            $odometerData->meter_change = 0;
-                            $odometerData->is_accurate = 0;
-                            $odometerData->section_rate_id = $section->id;
-                            //if set customer id than update reading with customer id
-                            if ( isset($customerData->id)) {
-                                $odometerData->customer_id = $customerData->custId;
-                            }
-
-                            $odometerData->input_by = 'device';
-                            if ( $device == 'platform' ) {
-                                $odometerData->device_type = 'Platform Science';
-                            } else if($device == 'telogies' ) {
-                                $odometerData->device_type = 'Telogies';
-                            }
-                            $result = $odometerData->save();
-
-                        } else {
-                            $result = 1;
-                            continue;
-                        }
-                       
-                    } else {
-                        $notFoundArr[$i] = $unitNo;
-                        $i++;
-                    }
+                foreach($headings['headers'] as $head){
+                    $headArr['text'] = str_replace('_',' ',ucFirst($head));
+                    $headArr['value'] = $head;
+                    $i++;
+                    array_push($excelArr,$headArr);
                 }
-
-            } else {
-                $response['code'] = 400;
-                $response["status"] = "error";
-                $response['message'] = 'Data not found';
-                $response['content'] = "";
+                
             }
-                if ( isset($result) ) {
+                // return $reader;
+            
+            if($mod == 'User'){
+                $mod = "App"."\\".$mod;
+            }else{
+                $mod = "App\\Models\\".$mod;
+            }
+                $mod = new $mod;
+                $table = $mod->getTable();
+
+                $columns = DB::select( DB::raw('SHOW COLUMNS FROM `'.$table.'`'));
+                $param = [];
+                $fieldArr = [];
+                
+                $i = 0;
+                $j = 0;
+                
+                foreach($columns as $column) {
+                    if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at'){
+                        continue;
+                    }
+                    $col = explode('_',$column->Field);
+                    if(isset($col[2]) && $col[2] == 'id'){
+                        $column->Field = $col[0].'_'.$col[1].'_name';
+                    }else if(isset($col[1]) && $col[1] == 'id'){
+                        $column->Field = $col[0].'_name';
+                    }
+                    if($column->Null == 'NO'){
+                        $param['required'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                        $param['required'][$i]['type'] = $column->Type;
+                        $param['required'][$i]['default'] = $column->Default;
+                        // $i++;
+                    }else{
+                        $param['optional'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                        $param['optional'][$i]['type'] = $column->Type;
+                        $param['optional'][$i]['default'] = $column->Default;
+                    }
+                    
+                    $i++;
+                }
+                array_push($fieldArr,$param);
+                
+            
+                if ( isset($fieldArr) ) {
                     $response['code'] = 200;
                     $response['message'] = 'Reading imported';
                     $response["status"] = "success";
-                    $response["content"] = $notFoundArr;
+                    $response["content"] = $fieldArr;
+                    $response['excel'] = $excelArr;
                 } else {
                     $response['code'] = 201;
-                    $response['message'] = 'Make sure data is from relevant device';
+                    $response['message'] = 'Make Sure The Sheet is for Relavant Module';
                     $response["status"] = "success";
-                    $response["content"] = $notFoundArr;
+                    $response["content"] = '';
                 }
            
-
             } else {
                 
                 $response['code'] = 400;
                 $response["status"] = "error";
                 $response['message'] = 'Please Select Excel File';
                 $response['content'] = "";
-
-                return response($response, $response['code'])
-                    ->header('Content_type', 'application/json');
             }
+            return response($response, $response['code'])
+                    ->header('Content_type', 'application/json');
     }
     public static function fetchModules() {
         $r_param = array();
         $response = array();
         $moduleArr = [];
 
-        $result = Module::all();
+        $result = Module::where('import_enabled','yes')->get();
         if(isset($result[0])){
             $i = 0;
             foreach($result as $res){
-                $r_param['text'] = str_replace(' ','',ucFirst($res->name));
+                $resName = explode(' ',$res->name);
+                if(isset($resName[2])){
+                    if($resName[0] == 'vehicle'){
+                        $resName[0] = 'asset';
+                    }
+                    $res->name = ucFirst($resName[0]).ucFirst($resName[1]).ucFirst($resName[2]);
+                }else if(isset($resName[1])){
+                    if($resName[0] == 'vehicle'){
+                        $resName[0] = 'asset';
+                    }
+                    $res->name = ucFirst($resName[0]).ucFirst($resName[1]);
+                }
+                if($res->name == 'vehicle'){
+                    $res->name = 'asset';
+                }
+                $r_param['text'] = ucFirst($res->name);
                 $r_param['value'] = $res->id;
                 $i++;
                 array_push($moduleArr,$r_param);
@@ -203,4 +235,54 @@ class ImportDataController extends Controller
 
         return $fieldArr;
     }
+    public static function getColumns($table,$module){
+        
+        // $columns = DB::getSchemaBuilder()->getColumnListing($module);
+        // if($module == 'invoices'){
+
+        // }
+        $columns = DB::select( DB::raw('SHOW COLUMNS FROM `'.$table.'`'));
+        $param = [];
+        $fieldArr = [];
+        $i = 0;
+        
+        foreach($columns as $column) {
+            if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at'){
+                continue;
+            }
+            $col = explode('_',$column->Field);
+            if(isset($col[2]) && $col[2] == 'id'){
+                $column->Field = $col[0].'_'.$col[1].'_name';
+            }else if(isset($col[1]) && $col[1] == 'id'){
+                $column->Field = $col[0].'_name';
+            }
+            $param[$column->Field] = '';
+            
+            $i++;
+        }
+        array_push($fieldArr,$param);
+
+        $data = $fieldArr;
+        $fileName = $module;
+        $path = rtrim(app()->basePath('public/'), '/') . '/exports';
+
+        $excel = Excel::create($fileName, function ($excel) use ($data) {
+            $excel->sheet('mySheet', function ($sheet) use ($data) {
+                $sheet->fromArray($data);
+            });
+        })->store("xlsx", $path, true);
+        chmod($excel['full'], 0777);
+
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $domainName = $_SERVER['HTTP_HOST'];
+        $excel['web'] = $protocol . $domainName . '/api/exports/' . $fileName.'.xlsx';
+
+        $response['code'] = 200;
+        $response["status"] = "success";
+        $response['message'] = 'success export';
+        $response['content'] = $excel;
+
+        return $response['content'];
+    }
+
 }
