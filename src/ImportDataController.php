@@ -9,18 +9,20 @@
 namespace Import\ImportData;
 
 use Illuminate\Http\Request;
-use Validator;
 use Laravel\Lumen\Routing\Controller;
 use Import\ImportData\Module;
 use Import\ImportData\ImportError;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
 use App\User;
+use Validator;
 use App\Models\Role;
 use App\Models\VehicleGroup;
 use App\Models\Location;
 use App\Models\Asset;
+use App\Models\Shop;
 use Illuminate\Support\Facades\Storage;
+// use Illuminate\Validation\Validator;
 
 
 class ImportDataController extends Controller
@@ -128,15 +130,16 @@ class ImportDataController extends Controller
                     }
                     if($column->Null == 'NO'){
                         $param['required'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                        $param['required'][$i]['value'] = str_replace('_',' ',ucFirst($column->Field));
                         $param['required'][$i]['type'] = $column->Type;
                         $param['required'][$i]['default'] = $column->Default;
                         // $i++;
                     }else{
                         $param['optional'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                        $param['optional'][$i]['value'] = str_replace('_',' ',ucFirst($column->Field));
                         $param['optional'][$i]['type'] = $column->Type;
                         $param['optional'][$i]['default'] = $column->Default;
                     }
-                    
                     $i++;
                 }
                 array_push($fieldArr,$param);
@@ -285,4 +288,123 @@ class ImportDataController extends Controller
         return $response['content'];
     }
 
+    
+    public static function importData($request) {
+
+        $response = array();
+            // $module = $file['module'];
+            $mod = $request->input('module');
+            $fileName = $request->input('fileName');
+            $dataArr = $request->input('fields');
+            $unitNo = 0;
+           $notFoundArr = [];
+           if(isset($fileName)){
+                if (file_exists(base_path('public') . "/exports/".$fileName)) {
+                    $file = file_get_contents(base_path('public') . "/exports/".$fileName);
+                    
+                }
+            }
+            $moduleId = Module::where('name',$mod)->first();
+            if($mod == 'User'){
+                $mod = "App"."\\".$mod;
+            }else{
+                $mod = "App\\Models\\".$mod;
+            }
+                $mod = new $mod;
+            if ( isset($fileName) || $request->hasFile('myFile') && (strtolower($request->file('myFile')->clientExtension()) == 'xlsx' || strtolower($request->file('myFile')->clientExtension()) == 'xls')) {
+               
+                $path = base_path('public') . '/exports/'.$fileName;
+                $reader = Excel::load($path)->get();
+
+                // $singleRow = $reader->toArray(); // no need to parse whole sheet for the headings
+                // $headings['headers'] = $reader->getHeading();
+                $headArr = [];
+                $excelArr = [];
+                $mapArr = [];
+                if(key(json_decode($dataArr)) == 'required'){
+                    foreach(json_decode($dataArr) as $data){
+                        foreach($data as $dt){
+                            $validator = Validator::make($request->all(), [
+                                strtolower(str_replace(' ','_',$dt->name)) => 'required',
+                            ]);
+                            if ($validator->fails()) {
+                                $errors = $validator->errors()->toArray();
+                                if(isset($errors)){
+                                    // $error = new ImportError();
+                                    // $error->module_id = $moduleId;
+                                    // $error->error_reason = 
+                                }
+                            }
+                        }
+                    }
+                } 
+                
+                // return json_decode($dataArr);
+                if(isset($dataArr)){
+                    foreach(json_decode($dataArr) as $data){
+                        foreach($data as $dt){
+                            $s_param['text'] = $dt->name;
+                            if(is_object($dt->value)){
+                                $s_param['value'] = $dt->value->value;
+                            }else{
+                                $s_param['value'] = $dt->value;
+                            }
+                            array_push($mapArr,$s_param);
+                        }
+                    }
+                }
+                $testArr = [];
+                if(isset($reader)){
+                    $i = 0;
+                    foreach($reader as $head){
+                        $key = key($head->toArray());
+                        if($key != ''){
+                            // return $key;
+                            if(isset($mapArr)){
+                                foreach($mapArr as $map){
+                                    // return $key.'=='.strtolower(str_replace(' ','_',$map['text']));
+                                    if($key == strtolower(str_replace(' ','_',$map['text']))){
+                                        $f = strtolower(str_replace(' ','_',$map['text']));
+                                        // return strtolower(str_replace(' ','_',$map['text']));
+                                        $mod->$key = $head->$f;
+                                        $testArr[] = $map['text'];
+                                        if(strtolower(str_replace(' ','_',$map['text'])) == 'location_name'){
+                                            $locId = Location::where('name',$head->$f)->orWhere('code',$head->$f)->pluck('id')->first();
+                                            $mod->location_id = $locId;
+                                        }
+                                        // return $mod->$key;                                }
+                                        // $mod->save();
+                                    }
+                                }
+                            }
+                        }
+                        $mod->save();
+                    }
+                        return $testArr;
+                }
+           
+            
+                if ( isset($fieldArr) ) {
+                    $response['code'] = 200;
+                    $response['message'] = 'Reading imported';
+                    $response["status"] = "success";
+                    $response["content"] = $fieldArr;
+                } else {
+                    $response['code'] = 201;
+                    $response['message'] = 'Make Sure The Sheet is for Relavant Module';
+                    $response["status"] = "success";
+                    $response["content"] = '';
+                }
+           
+            } else {
+                
+                $response['code'] = 400;
+                $response["status"] = "error";
+                $response['message'] = 'Please Select Excel File';
+                $response['content'] = "";
+            }
+        
+            return response($response, $response['code'])
+                    ->header('Content_type', 'application/json');
+    }
 }
