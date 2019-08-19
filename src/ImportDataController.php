@@ -36,6 +36,7 @@ class ImportDataController extends Controller
             $fileName = $request->input('fileName');
             $unitNo = 0;
            $notFoundArr = [];
+           $notNeededColumns = ['api_token','password','id','created_at','updated_at','deleted_at','created_by','updated_by','deleted_by','file_path'];
            if(isset($fileName)){
                 if (file_exists(base_path('public') . "/exports/".$fileName)) {
                     $file = file_get_contents(base_path('public') . "/exports/".$fileName);
@@ -94,10 +95,19 @@ class ImportDataController extends Controller
             if(isset($headings['headers'][0])){
                 $i = 0;
                 foreach($headings['headers'] as $head){
-                    $headArr['text'] = str_replace('_',' ',ucFirst($head));
-                    $headArr['value'] = $head;
-                    $i++;
-                    array_push($excelArr,$headArr);
+                    if($head != ''){
+                        if(in_array($head,$notNeededColumns)){
+                            continue;
+                        }
+                        // if($head == 'id' || $head == 'created_by' || $head == 'updated_by' || $head == 'deleted_at' || $head == 'deleted_by' || $head == 'created_at' || $head == 'updated_at' || $head == 'api_token' || $head == 'password'){
+                        //     continue;
+                        // }
+                        $headArr['text'] = str_replace('_',' ',ucFirst($head));
+                        $headArr['value'] = $head;
+                        $i++;
+                        array_push($excelArr,$headArr);
+                    }
+                    
                 }
                 
             }
@@ -119,7 +129,7 @@ class ImportDataController extends Controller
                 $j = 0;
                 
                 foreach($columns as $column) {
-                    if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at'){
+                    if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at' || $column->Field == 'password' || $column->Field == 'api_token'){
                         continue;
                     }
                     $col = explode('_',$column->Field);
@@ -129,28 +139,50 @@ class ImportDataController extends Controller
                         $column->Field = $col[0].'_name';
                     }
                     if($column->Null == 'NO'){
-                        $param['required'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
-                        $param['required'][$i]['value'] = str_replace('_',' ',ucFirst($column->Field));
-                        $param['required'][$i]['type'] = $column->Type;
-                        $param['required'][$i]['default'] = $column->Default;
+                        $param['table_fields'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                        $param['table_fields'][$i]['value'] = $column->Field;
+                        $param['table_fields'][$i]['type'] = 'required';
+                        $param['table_fields'][$i]['default'] = $column->Default;
                         // $i++;
                     }else{
-                        $param['optional'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
-                        $param['optional'][$i]['value'] = str_replace('_',' ',ucFirst($column->Field));
-                        $param['optional'][$i]['type'] = $column->Type;
-                        $param['optional'][$i]['default'] = $column->Default;
+                        $param['table_fields'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                        $param['table_fields'][$i]['value'] = $column->Field;
+                        $param['table_fields'][$i]['type'] = 'optional';
+                        $param['table_fields'][$i]['default'] = $column->Default;
                     }
                     $i++;
                 }
-                array_push($fieldArr,$param);
+                if(isset($param)){
+                    $selectArr = [];
+                    foreach($param['table_fields'] as $pm){
+                        // return $pm;
+                        if(isset($headings['headers'][0])){
+                            $i = 0;
+                            foreach($headings['headers'] as $head){
+                                // return $pm;
+                                if($pm['value'] == $head){
+                                    // return 'hello';
+                                    $selectArr[$i]['text'] = str_replace('_',' ',ucFirst($head));
+                                    $selectArr[$i]['value'] = $head;
+                                }
+                                $i++;
+                                // array_push($excelArr,$headArr);
+
+                            }
+                            
+                        }
+                    }
+                }
+                // array_push($fieldArr,$param);
                 
             
                 if ( isset($fieldArr) ) {
                     $response['code'] = 200;
                     $response['message'] = 'Reading imported';
                     $response["status"] = "success";
-                    $response["content"] = $fieldArr;
+                    $response["content"] = $param;
                     $response['excel'] = $excelArr;
+                    $response['selectedArr'] = $selectArr;
                 } else {
                     $response['code'] = 201;
                     $response['message'] = 'Make Sure The Sheet is for Relavant Module';
@@ -250,7 +282,7 @@ class ImportDataController extends Controller
         $i = 0;
         
         foreach($columns as $column) {
-            if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at'){
+            if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at' || $column->Field == 'api_token' || $column->Field == 'password'){
                 continue;
             }
             $col = explode('_',$column->Field);
@@ -296,7 +328,12 @@ class ImportDataController extends Controller
             $mod = $request->input('module');
             $fileName = $request->input('fileName');
             $dataArr = $request->input('fields');
+            $excelArr = $request->input('Excelfields');
+            $selectedArr = $request->input('selectedfields');
             $unitNo = 0;
+
+            $selectArr = json_decode($selectedArr);
+            // return $selectArr;
            $notFoundArr = [];
            if(isset($fileName)){
                 if (file_exists(base_path('public') . "/exports/".$fileName)) {
@@ -310,7 +347,7 @@ class ImportDataController extends Controller
             }else{
                 $mod = "App\\Models\\".$mod;
             }
-                $mod = new $mod;
+                
             if ( isset($fileName) || $request->hasFile('myFile') && (strtolower($request->file('myFile')->clientExtension()) == 'xlsx' || strtolower($request->file('myFile')->clientExtension()) == 'xls')) {
                
                 $path = base_path('public') . '/exports/'.$fileName;
@@ -321,74 +358,97 @@ class ImportDataController extends Controller
                 $headArr = [];
                 $excelArr = [];
                 $mapArr = [];
-                if(key(json_decode($dataArr)) == 'required'){
-                    foreach(json_decode($dataArr) as $data){
-                        foreach($data as $dt){
-                            $validator = Validator::make($request->all(), [
-                                strtolower(str_replace(' ','_',$dt->name)) => 'required',
-                            ]);
-                            if ($validator->fails()) {
-                                $errors = $validator->errors()->toArray();
-                                if(isset($errors)){
-                                    // $error = new ImportError();
-                                    // $error->module_id = $moduleId;
-                                    // $error->error_reason = 
-                                }
-                            }
-                        }
-                    }
-                } 
-                
-                // return json_decode($dataArr);
+
                 if(isset($dataArr)){
                     foreach(json_decode($dataArr) as $data){
-                        foreach($data as $dt){
-                            $s_param['text'] = $dt->name;
-                            if(is_object($dt->value)){
-                                $s_param['value'] = $dt->value->value;
+                        // return $data;
+                        // foreach($data as $dt){
+                            $s_param['text'] = $data->name;
+                            if(is_object($data->value)){
+                                $s_param['value'] = $data->value->value;
                             }else{
-                                $s_param['value'] = $dt->value;
+                                $s_param['value'] = $data->value;
                             }
                             array_push($mapArr,$s_param);
-                        }
+                        // }
                     }
                 }
                 $testArr = [];
+                $colArr = [];
                 if(isset($reader)){
+                    // return $reader;
                     $i = 0;
+                    $m = 0;
+                    $errorCount = 0;
                     foreach($reader as $head){
+                        $mod = new $mod;
+                        // return $head;
                         $key = key($head->toArray());
-                        if($key != ''){
-                            // return $key;
-                            if(isset($mapArr)){
-                                foreach($mapArr as $map){
-                                    // return $key.'=='.strtolower(str_replace(' ','_',$map['text']));
-                                    if($key == strtolower(str_replace(' ','_',$map['text']))){
-                                        $f = strtolower(str_replace(' ','_',$map['text']));
-                                        // return strtolower(str_replace(' ','_',$map['text']));
-                                        $mod->$key = $head->$f;
-                                        $testArr[] = $map['text'];
-                                        if(strtolower(str_replace(' ','_',$map['text'])) == 'location_name'){
-                                            $locId = Location::where('name',$head->$f)->orWhere('code',$head->$f)->pluck('id')->first();
-                                            $mod->location_id = $locId;
+                        // return json_decode($dataArr);
+                        $j = 0;
+                        foreach(json_decode($dataArr) as $data){
+                            $arr = $head->toArray();
+                        //    return $arr;
+
+                           if($data->type == 'required'){
+                               $validator = Validator::make($arr, [
+                                $data->value => 'required',
+                               ]);
+                                $ErrArr = [];
+                                if ($validator->fails()) {
+                                    $errors = $validator->errors()->toArray();
+                                    $er_arr = [];
+                                    if(isset($errors)){
+                                        
+                                        foreach($errors as  $er){
+                                            $i = 0;
+                                            foreach($er as $e){
+                                                $colArr[$m]['name'] = key($errors); 
+                                                $er_arr['field'] = key($errors);
+                                                $er_arr['error'] =  $e;
+                                                array_push($ErrArr,$er_arr);
+                                                $i++;
+                                                $m++;
+                                            }
+                                            $errorCount++;
                                         }
-                                        // return $mod->$key;                                }
-                                        // $mod->save();
                                     }
                                 }
+                                $error = new ImportError();
+                                $error->module_id = $moduleId->id;
+                                $error->error_reason = json_encode($ErrArr); 
+                                $error->fields = json_encode($colArr);
+                                $error->save();
+                           }
+                            if(!is_object($selectArr[$j]->text)){
+                                if($selectArr[$j]->value == 'location_name'){
+                                    $locId = Location::where('company_name',$head[$selectArr[$j]->value])->orWhere('code',$head[$selectArr[$j]->value])->pluck('id')->first();
+                                    $mod->location_id = $locId;
+                                }else{
+                                    $column = $data->value;
+                                    $value = $selectArr[$j]->value;
+                                    $mod->$column = $head[$value];
+                                }
+                            }else{
+                                if($selectArr[$j]->text->value == 'location_name'){
+                                    $locId = Location::where('company_name',$head[$selectArr[$j]->text->value])->orWhere('code',$head[$selectArr[$j]->text->value])->pluck('id')->first();
+                                    $mod->location_id = $locId;
+                                }else{
+                                    $column = $data->value;
+                                    $mod->$column = $head[$selectArr[$j]->text->value];
+                                }
                             }
-                        }
-                        $mod->save();
+                        $j++;
+                       }
+                       $result = $mod->save();
                     }
-                        return $testArr;
                 }
-           
-            
-                if ( isset($fieldArr) ) {
+                if ( isset($result) ) {
                     $response['code'] = 200;
-                    $response['message'] = 'Reading imported';
+                    $response['message'] = 'Data imported';
                     $response["status"] = "success";
-                    $response["content"] = $fieldArr;
+                    $response["content"] = $result;
+                    $response['error_count'] = $errorCount;
                 } else {
                     $response['code'] = 201;
                     $response['message'] = 'Make Sure The Sheet is for Relavant Module';
