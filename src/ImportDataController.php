@@ -481,7 +481,11 @@ class ImportDataController extends Controller
                                         $mod->component_id = $compId;
                                     }
                                     if($selectArr[$j]->value == 'location_name'){
-                                        $locId = Location::where('company_name',$head[$selectArr[$j]->value])->orWhere('code',$head[$selectArr[$j]->value])->pluck('id')->first();
+                                        $loc = explode(',',$head[$selectArr[$j]->value]);
+                                        if(isset($loc[1])){
+                                            $head[$selectArr[$j]->value] = $loc[0];
+                                        }
+                                        $locId = Location::where('company_name','like',"%{$head[$selectArr[$j]->value]}%")->orWhere('code',$head[$selectArr[$j]->value])->pluck('id')->first();
                                         $mod->location_id = $locId;
                                     }
                                     if($selectArr[$j]->value == 'group_name'){
@@ -532,7 +536,11 @@ class ImportDataController extends Controller
                                         $mod->vehicle_id = $vehId;
                                     }
                                     if($selectArr[$j]->text->value == 'location_name'){
-                                        $locId = Location::where('company_name',$head[$selectArr[$j]->text->value])->orWhere('code',$head[$selectArr[$j]->text->value])->pluck('id')->first();
+                                        $loc = explode(',',$head[$selectArr[$j]->text->value]);
+                                        if(isset($loc[1])){
+                                            $head[$selectArr[$j]->text->value] = $loc[0];
+                                        }
+                                        $locId = Location::where('company_name','like',"%{$head[$selectArr[$j]->text->value]}%")->orWhere('code',$head[$selectArr[$j]->text->value])->pluck('id')->first();
                                         $mod->location_id = $locId;
                                     }
                                     if($selectArr[$j]->text->value == 'group_name'){
