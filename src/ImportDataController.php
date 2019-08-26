@@ -375,7 +375,7 @@ class ImportDataController extends Controller
             $notFoundArr = [];
             $conditionalColumn = ['location_name','group_name','unit_number','component_code','role_name','customer_number','city_name','state_name','country_name','timezone'];
 
-            $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), 'LIKE', '%' . strtolower($mod) . '%')->first();
+            $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), '=', '%' . strtolower($mod) . '%')->first();
 
             if($mod == 'User'){
                 $mod = "App"."\\".$mod;
