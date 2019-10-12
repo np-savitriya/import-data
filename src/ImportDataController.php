@@ -260,8 +260,8 @@ class ImportDataController extends Controller
         } else {
             return false;
         }
-        return response($response, $response['code'])
-            ->header('content_type', 'application/json');
+        // return response($response, $response['code'])
+        //     ->header('content_type', 'application/json');
     }
     public static function getColumnNames($module){
         
@@ -375,8 +375,11 @@ class ImportDataController extends Controller
             $notFoundArr = [];
             $conditionalColumn = ['location_name','group_name','unit_number','component_code','role_name','customer_number','city_name','state_name','country_name','timezone'];
 
-            $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), '=', '%' . strtolower($mod) . '%')->first();
+            // $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), '=', '%' . strtolower($mod) . '%')->first();
 
+            $modu = strtolower($mod);
+            $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), '=', $modu)->first();
+            
             if($mod == 'User'){
                 $mod = "App"."\\".$mod;
             }else{
