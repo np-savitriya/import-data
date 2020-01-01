@@ -2389,34 +2389,98 @@
         ]
     },
     {
-        "name": "maatwebsite/excel",
-        "version": "3.1.18",
-        "version_normalized": "3.1.18.0",
+        "name": "opis/closure",
+        "version": "dev-master",
+        "version_normalized": "9999999-dev",
         "source": {
             "type": "git",
-            "url": "https://github.com/Maatwebsite/Laravel-Excel.git",
-            "reference": "d0231ab1f4bb93c8695630cb445ada1fdc54add0"
+            "url": "https://github.com/opis/closure.git",
+            "reference": "c37b40d59d9afffc2e5e958e2e5ccdb08634f81d"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/Maatwebsite/Laravel-Excel/zipball/d0231ab1f4bb93c8695630cb445ada1fdc54add0",
-            "reference": "d0231ab1f4bb93c8695630cb445ada1fdc54add0",
+            "url": "https://api.github.com/repos/opis/closure/zipball/c37b40d59d9afffc2e5e958e2e5ccdb08634f81d",
+            "reference": "c37b40d59d9afffc2e5e958e2e5ccdb08634f81d",
+            "shasum": ""
+        },
+        "require": {
+            "php": "^5.4 || ^7.0"
+        },
+        "require-dev": {
+            "jeremeamia/superclosure": "^2.0",
+            "phpunit/phpunit": "^4.0 || ^5.0 || ^6.0 || ^7.0"
+        },
+        "time": "2019-12-21T12:58:57+00:00",
+        "type": "library",
+        "extra": {
+            "branch-alias": {
+                "dev-master": "3.5.x-dev"
+            }
+        },
+        "installation-source": "source",
+        "autoload": {
+            "psr-4": {
+                "Opis\\Closure\\": "src/"
+            },
+            "files": [
+                "functions.php"
+            ]
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Marius Sarca",
+                "email": "marius.sarca@gmail.com"
+            },
+            {
+                "name": "Sorin Sarca",
+                "email": "sarca_sorin@hotmail.com"
+            }
+        ],
+        "description": "A library that can be used to serialize closures (anonymous functions) and arbitrary objects.",
+        "homepage": "https://opis.io/closure",
+        "keywords": [
+            "anonymous functions",
+            "closure",
+            "function",
+            "serializable",
+            "serialization",
+            "serialize"
+        ]
+    },
+    {
+        "name": "maatwebsite/excel",
+        "version": "3.2.x-dev",
+        "version_normalized": "3.2.9999999.9999999-dev",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/Maatwebsite/Laravel-Excel.git",
+            "reference": "c9a0ac342fbba09523db6036847d69064c5d9a42"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/Maatwebsite/Laravel-Excel/zipball/c9a0ac342fbba09523db6036847d69064c5d9a42",
+            "reference": "c9a0ac342fbba09523db6036847d69064c5d9a42",
             "shasum": ""
         },
         "require": {
             "ext-json": "*",
-            "illuminate/support": "5.5.*|5.6.*|5.7.*|5.8.*|^6.0",
+            "illuminate/support": "5.5.*|5.6.*|5.7.*|5.8.*",
+            "opis/closure": "^3.1",
             "php": "^7.0",
-            "phpoffice/phpspreadsheet": "^1.10"
+            "phpoffice/phpspreadsheet": "^1.6"
         },
         "require-dev": {
             "mockery/mockery": "^1.1",
-            "orchestra/database": "^4.0",
-            "orchestra/testbench": "^4.0",
+            "orchestra/database": "^3.8",
+            "orchestra/testbench": "^3.8",
             "phpunit/phpunit": "^8.0",
             "predis/predis": "^1.1"
         },
-        "time": "2019-12-24T10:40:12+00:00",
+        "time": "2019-04-03T12:42:11+00:00",
         "type": "library",
         "extra": {
             "laravel": {
@@ -2428,7 +2492,7 @@
                 }
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "Maatwebsite\\Excel\\": "src/"

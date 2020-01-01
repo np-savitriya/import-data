@@ -68,4 +68,5 @@ return array(
     'ac9e33ce6841aa5bf5d16d465a2f03a7' => $vendorDir . '/markbaker/complex/classes/src/operations/divideinto.php',
     '6124b4c8570aa390c21fafd04a26c69f' => $vendorDir . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
     '72579e7bd17821bb1321b87411366eae' => $vendorDir . '/illuminate/support/helpers.php',
+    '538ca81a9a966a6716601ecf48f4eaef' => $vendorDir . '/opis/closure/functions.php',
 );

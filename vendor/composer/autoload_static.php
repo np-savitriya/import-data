@@ -69,6 +69,7 @@ class ComposerStaticInitcfc8ce1696cbac06c00de2ebd5a752f1
         'ac9e33ce6841aa5bf5d16d465a2f03a7' => __DIR__ . '/..' . '/markbaker/complex/classes/src/operations/divideinto.php',
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
         '72579e7bd17821bb1321b87411366eae' => __DIR__ . '/..' . '/illuminate/support/helpers.php',
+        '538ca81a9a966a6716601ecf48f4eaef' => __DIR__ . '/..' . '/opis/closure/functions.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -93,6 +94,10 @@ class ComposerStaticInitcfc8ce1696cbac06c00de2ebd5a752f1
             'Psr\\Container\\' => 14,
             'Prophecy\\' => 9,
             'PhpOffice\\PhpSpreadsheet\\' => 25,
+        ),
+        'O' => 
+        array (
+            'Opis\\Closure\\' => 13,
         ),
         'M' => 
         array (
@@ -160,6 +165,10 @@ class ComposerStaticInitcfc8ce1696cbac06c00de2ebd5a752f1
         'PhpOffice\\PhpSpreadsheet\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet',
+        ),
+        'Opis\\Closure\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/opis/closure/src',
         ),
         'Matrix\\' => 
         array (
