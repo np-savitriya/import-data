@@ -2390,32 +2390,33 @@
     },
     {
         "name": "maatwebsite/excel",
-        "version": "3.1.0",
-        "version_normalized": "3.1.0.0",
+        "version": "3.1.18",
+        "version_normalized": "3.1.18.0",
         "source": {
             "type": "git",
             "url": "https://github.com/Maatwebsite/Laravel-Excel.git",
-            "reference": "968614f8087d2b259b040b3884cbe7742dd89960"
+            "reference": "d0231ab1f4bb93c8695630cb445ada1fdc54add0"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/Maatwebsite/Laravel-Excel/zipball/968614f8087d2b259b040b3884cbe7742dd89960",
-            "reference": "968614f8087d2b259b040b3884cbe7742dd89960",
+            "url": "https://api.github.com/repos/Maatwebsite/Laravel-Excel/zipball/d0231ab1f4bb93c8695630cb445ada1fdc54add0",
+            "reference": "d0231ab1f4bb93c8695630cb445ada1fdc54add0",
             "shasum": ""
         },
         "require": {
-            "illuminate/support": "^5.5",
+            "ext-json": "*",
+            "illuminate/support": "5.5.*|5.6.*|5.7.*|5.8.*|^6.0",
             "php": "^7.0",
-            "phpoffice/phpspreadsheet": "^1.4"
+            "phpoffice/phpspreadsheet": "^1.10"
         },
         "require-dev": {
             "mockery/mockery": "^1.1",
-            "orchestra/database": "^3.6",
-            "orchestra/testbench": "^3.6",
-            "phpunit/phpunit": "^7.0",
+            "orchestra/database": "^4.0",
+            "orchestra/testbench": "^4.0",
+            "phpunit/phpunit": "^8.0",
             "predis/predis": "^1.1"
         },
-        "time": "2018-10-03T09:15:48+00:00",
+        "time": "2019-12-24T10:40:12+00:00",
         "type": "library",
         "extra": {
             "laravel": {
