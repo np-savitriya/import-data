@@ -461,6 +461,8 @@ class ImportDataController extends Controller
                                     $error->module_id = $moduleId->id;
                                     $error->error_reason = json_encode($ErrArr);
                                     $error->fields = json_encode($colArr);
+                                    $error->created_by = $userId;
+                                    $error->updated_by = $userId;
                                     $error->save();
                                 }
                                 
