@@ -205,7 +205,7 @@ class ImportDataController extends Controller
                             foreach($headings['headers'] as $head){
                                 // return $head;
                                 
-                                if($pm['value'] == $head){
+                                if(strtolower($pm['value']) == strtolower($head)){
                                     // return 'hello';
                                     $selectArr[$j]['text'] = str_replace('_',' ',ucFirst($head));
                                     $selectArr[$j]['value'] = $head;
@@ -511,6 +511,9 @@ class ImportDataController extends Controller
                                 // if($selectArr[$j]->value != 'location_name' && $selectArr[$j]->value != 'group_name' && $selectArr[$j]->value != 'role_name'){
                                     $column = $data->value;
                                     $value = $selectArr[$j]->value;
+                                    if ($value == 'hp'){
+                                        $value = 'HP';
+                                    }
                                     $mod->$column = $head[$value];
                             
                                 }else{
@@ -594,8 +597,14 @@ class ImportDataController extends Controller
                                         $mod->role_id = $grId;
                                     }
                                     if($selectArr[$j]->value == 'city_name'){
-                                        $ctId = City::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
-                                        $mod->city_id = $ctId;
+                                        if (isset($head[$selectArr[$j]->value])){
+
+                                            $ctId = City::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
+                                            $mod->city_id = $ctId;
+                                        }else{
+                                            $mod->city_id = NULL;
+                                        }
+                                        
                                     }
                                     if($selectArr[$j]->value == 'state_name' && $head[$selectArr[$j]->value] != ''){
                                         $stId = State::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
