@@ -31,8 +31,19 @@ use App\Models\Country;
 use App\Models\Groups;
 use App\Models\TimeZones;
 use App\Models\Component;
+use App\Models\Vendor;
+use App\Models\Tax;
+use App\Models\Warranty;
+use App\Models\MetricType;
+use App\Models\MeasurementUnit;
+use App\Models\ComponentCategory;
+use App\Models\ComponentManufacturer;
+use App\Models\ReplenishmentMethod;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
+use Import\ImportData\DataExport;
+use Import\ImportData\DataImport;
+use Maatwebsite\Excel\HeadingRowImport;
 // use Illuminate\Validation\Validator;
 
 
@@ -96,20 +107,25 @@ class ImportDataController extends Controller
                     }
 
             $path = base_path('public') . '/exports/'.$fileName;
-            $reader = Excel::load($path)->get();
+            // $reader = Excel::load($path)->get();
+            // $reader = Excel::toArray(new DataImport, $path, null, \Maatwebsite\Excel\Excel::XLSX); 
 
             // $singleRow = $reader->toArray(); // no need to parse whole sheet for the headings
-            $headings['headers'] = $reader->getHeading();
+            // $headings['headers'] = $reader->getHeading();
+            $headings['headers'] = (new HeadingRowImport)->toArray($path)[0][0];
+            sort($headings['headers']);
             $headArr = [];
             $excelArr = [];
             // return $headings['headers'];
-            if(isset($headings['headers'][0])){
+            
+            if(isset($headings['headers'])){
                 $i = 0;
                 foreach($headings['headers'] as $head){
                     if($head != ''){
                         if(in_array($head,$notNeededColumns)){
                             continue;
                         }
+                        
                         // if($head == 'id' || $head == 'created_by' || $head == 'updated_by' || $head == 'deleted_at' || $head == 'deleted_by' || $head == 'created_at' || $head == 'updated_at' || $head == 'api_token' || $head == 'password'){
                         //     continue;
                         // }
@@ -138,7 +154,7 @@ class ImportDataController extends Controller
                 
                 $i = 0;
                 $j = 0;
-                
+           
                 foreach($columns as $column) {
                     if(in_array($column->Field,$notNeededColumns)){
                         continue;
@@ -175,21 +191,28 @@ class ImportDataController extends Controller
                     }
                     $i++;
                 }
+                
                 if(isset($param)){
                     $selectArr = [];
                     // return $headings['headers'];
+                    $j = 0;
                     foreach($param['table_fields'] as $pm){
                         // return $pm;
-                        if(isset($headings['headers'][0])){
-                            $j = 0;
+                        // print_r($pm);
+                        // exit;
+                        if(isset($headings['headers'])){
+                            
                             foreach($headings['headers'] as $head){
                                 // return $head;
+                                
                                 if($pm['value'] == $head){
                                     // return 'hello';
                                     $selectArr[$j]['text'] = str_replace('_',' ',ucFirst($head));
                                     $selectArr[$j]['value'] = $head;
+
+                                    $j++;
                                 }
-                                $j++;
+                                
                                 // array_push($excelArr,$headArr);
 
                             }
@@ -305,7 +328,7 @@ class ImportDataController extends Controller
         $param = [];
         $fieldArr = [];
         $i = 0;
-        
+        $fields = [];
         foreach($columns as $column) {
             if(in_array($column->Field,$notNeededColumns)){
                 continue;
@@ -333,23 +356,32 @@ class ImportDataController extends Controller
                 $param[$column->Field] = '';
             }
             $i++;
+
+            array_push($fields ,$column->Field);
         }
         array_push($fieldArr,$param);
 
         $data = $fieldArr;
-        $fileName = $module;
+        $fileName = $module.'.xlsx';
         $path = rtrim(app()->basePath('public/'), '/') . '/exports';
-
-        $excel = Excel::create($fileName, function ($excel) use ($data) {
-            $excel->sheet('mySheet', function ($sheet) use ($data) {
-                $sheet->fromArray($data);
-            });
-        })->store("xlsx", $path, true);
-        chmod($excel['full'], 0777);
+        
+        
+        // $excel = Excel::create($fileName, function ($excel) use ($data) {
+        //     $excel->sheet('mySheet', function ($sheet) use ($data) {
+        //         $sheet->fromArray($data);
+        //     });
+        // })->store("xlsx", $path, true);
+        $excel = [];
+        $export = new DataExport($data,$fields);
+        Excel::store($export, $fileName);
+        
+        $excel['full'] = $path;
+        $excel['file'] = $module;
+        // chmod($excel['full'], 0777);
 
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
         $domainName = $_SERVER['HTTP_HOST'];
-        $excel['web'] = $protocol . $domainName . '/api/exports/' . $fileName.'.xlsx';
+        $excel['web'] = $protocol . $domainName . '/api/exports/' . $fileName;
 
         $response['code'] = 200;
         $response["status"] = "success";
@@ -373,7 +405,7 @@ class ImportDataController extends Controller
             $moduleName = $mod;
             $selectArr = json_decode($selectedArr);
             $notFoundArr = [];
-            $conditionalColumn = ['location_name','group_name','unit_number','component_code','role_name','customer_number','city_name','state_name','country_name','timezone'];
+            $conditionalColumn = ['location_name','group_name','unit_number','component_code','role_name','customer_number','city_name','state_name','country_name','timezone','category_name','parent_name','stock_unit_name','vendor_name','manufacturer_name','tax_name','warranty_name','purchase_unit_name','item_measurement_name','metric_type_name','replenishment_method_name'];
 
             // $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), '=', '%' . strtolower($mod) . '%')->first();
 
@@ -389,8 +421,11 @@ class ImportDataController extends Controller
             if ( isset($fileName)) {
                
                 $path = base_path('public') . '/exports/'.$fileName;
-                $reader = Excel::load($path)->get();
+                // $reader = Excel::load($path)->get();
 
+                $reader = Excel::toArray(new DataImport, $path, null, \Maatwebsite\Excel\Excel::XLSX); 
+
+               
                 // $singleRow = $reader->toArray(); // no need to parse whole sheet for the headings
                 // $headings['headers'] = $reader->getHeading();
                 $headArr = [];
@@ -410,21 +445,22 @@ class ImportDataController extends Controller
                     }
                 }
                 $testArr = [];
-                if(isset($reader)){
+                if(isset($reader[0])){
                     // return $reader;
                     $i = 0;
                     $errorCount = 0;
-                    foreach($reader as $head){
+                    foreach($reader[0] as $head){
                         $errorFlag = 'false';
 
                         $mod = new $mod;
                         // return $head;
                         $table = $mod->getTable();
-                        $key = key($head->toArray());
+                        $key = key($head);
+              
                         // return json_decode($dataArr);
                         $j = 0;
                         foreach(json_decode($dataArr) as $data){
-                            $arr = $head->toArray();
+                            $arr = $head;
                         //    return $arr;
 
                            if($data->type == 'required'){
@@ -468,6 +504,7 @@ class ImportDataController extends Controller
                                 
                            }
                         //    return is_object($selectArr[$j]);
+                        
                             if(isset($selectArr[$j]) && !is_object($selectArr[$j]->text)){
                                 if(!in_array($selectArr[$j]->value,$conditionalColumn)){
                                
@@ -481,9 +518,56 @@ class ImportDataController extends Controller
                                         $vehId = Asset::where('unit_no',$head[$selectArr[$j]->value])->pluck('id')->first();
                                         $mod->vehicle_id = $vehId;
                                     }
+                                    if($selectArr[$j]->value == 'parent_name'){
+                                        // continue;
+                                        $mod->parent_id = NULL;
+                                    }
+                                      
+                                    if($selectArr[$j]->value == 'purchase_unit_name'){
+                                        $measureId = MeasurementUnit::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->purchase_unit_id = $measureId;
+                                    } 
+                                    if($selectArr[$j]->value == 'manufacturer_name'){
+                                        $manId = ComponentManufacturer::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->manufacturer_id = $manId;
+                                    } 
+                                    
+                                    if($selectArr[$j]->value == 'matric_type_name'){
+                                        $metId = MetricType::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->matric_type_id = $metId;
+                                    } 
+                                    if($selectArr[$j]->value == 'replenishment_method_name'){
+                                        $reoId = ReplenishmentMethod::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->replenishment_method_id = $reoId;
+                                    } 
+                                    if($selectArr[$j]->value == 'item_measurement_name'){
+                                        $measureId = MeasurementUnit::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->item_measurement_id = $measureId;
+                                    }
+                                    if($selectArr[$j]->value == 'warranty_name'){
+                                        $warId = Warranty::whereRaw('LOWER(description) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->warranty_id = $warId;
+                                    } 
+                                    if($selectArr[$j]->value == 'tax_name'){
+                                        $txId = Tax::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->tax_id = $txId;
+                                    } 
                                     if($selectArr[$j]->value == 'component_code'){
                                         $compId = Component::where('code','like',$head[$selectArr[$j]->value])->pluck('id')->first();
                                         $mod->component_id = $compId;
+                                    }
+                                    if($selectArr[$j]->value == 'vendor_name'){
+                                        $vendorId = Vendor::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->vendor_id = $vendorId;
+                                    }
+                                    if($selectArr[$j]->value == 'stock_unit_name'){
+
+                                        $measureId = MeasurementUnit::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->value]])->pluck('id')->first();
+                                        $mod->stock_unit_id = $measureId;
+                                    }
+                                    if($selectArr[$j]->value == 'category_name'){
+                                        $catId = ComponentCategory::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
+                                        $mod->category_id = $catId;
                                     }
                                     if($selectArr[$j]->value == 'location_name'){
                                         $loc = explode(',',$head[$selectArr[$j]->value]);
@@ -493,9 +577,17 @@ class ImportDataController extends Controller
                                         $locId = Location::where('company_name','like',"%{$head[$selectArr[$j]->value]}%")->orWhere('code',$head[$selectArr[$j]->value])->pluck('id')->first();
                                         $mod->location_id = $locId;
                                     }
+                                    
                                     if($selectArr[$j]->value == 'group_name'){
-                                        $grId = Groups::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
-                                        $mod->group_id = $grId;
+                                        if ( isset($head[$selectArr[$j]->value])){
+                                            $grId = Groups::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
+                                        
+                                            $mod->group_id = $grId;
+                                        }else
+                                        {
+                                            $mod->group_id = NULL;
+                                        }
+                                        
                                     }
                                     if($selectArr[$j]->value == 'role_name'){
                                         $grId = Role::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
@@ -536,6 +628,52 @@ class ImportDataController extends Controller
                                         $compId = Component::where('code','like',$head[$selectArr[$j]->text->value])->pluck('id')->first();
                                         $mod->component_id = $compId;
                                     }
+                                    if($selectArr[$j]->value == 'parent_name'){
+                                        // continue;
+                                        $mod->parent_id = NULL;
+                                    }
+                                    if($selectArr[$j]->value == 'matric_type_name'){
+                                        $metId = MetricType::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->matric_type_id = $metId;
+                                    } 
+                                    if($selectArr[$j]->value == 'warranty_name'){
+                                        $warId = Warranty::whereRaw('LOWER(description) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->warranty_id = $warId;
+                                    } 
+                                    if($selectArr[$j]->value == 'replenishment_method_name'){
+                                        $reoId = ReplenishmentMethod::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->replenishment_method_id = $reoId;
+                                    } 
+                                    if($selectArr[$j]->value == 'tax_name'){
+                                        $txId = Tax::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->tax_id = $txId;
+                                    } 
+                                    if($selectArr[$j]->value == 'category_name'){
+                                        $catId = ComponentCategory::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->category_id = $catId;
+                                    }
+                                    if($selectArr[$j]->value == 'purchase_unit_name'){
+                                        $measureId = MeasurementUnit::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->purchase_unit_id = $measureId;
+                                    } 
+                                    if($selectArr[$j]->value == 'item_measurement_name'){
+                                        $measureId = MeasurementUnit::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->item_measurement_id = $measureId;
+                                    } 
+                                    if($selectArr[$j]->value == 'vendor_name'){
+                                        $vendorId = Vendor::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->vendor_id = $vendorId;
+                                    }
+                                    if($selectArr[$j]->value == 'stock_unit_name'){
+
+                                        $measureId = MeasurementUnit::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        
+                                        $mod->stock_unit_id = $measureId;
+                                    }
+                                    if($selectArr[$j]->value == 'manufacturer_name'){
+                                        $manId = ComponentManufacturer::whereRaw('LOWER(name) =  ?',[$head[$selectArr[$j]->text->value]])->pluck('id')->first();
+                                        $mod->manufacturer_id = $manId;
+                                    } 
                                     if($selectArr[$j]->text->value == 'unit_number'){
                                         $vehId = Asset::where('unit_no',$head[$selectArr[$j]->text->value])->pluck('id')->first();
                                         $mod->vehicle_id = $vehId;
@@ -596,6 +734,7 @@ class ImportDataController extends Controller
                         $j++;
                        }
                     //store user details in sso iof module is User
+                    
                        if($moduleName == 'User'){
                         $password = '';
                         $pass = explode('@',$mod->username);
