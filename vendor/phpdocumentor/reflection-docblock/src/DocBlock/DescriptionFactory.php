@@ -15,7 +15,6 @@ namespace phpDocumentor\Reflection\DocBlock;
 
 use phpDocumentor\Reflection\Types\Context as TypeContext;
 use Webmozart\Assert\Assert;
-use const PREG_SPLIT_DELIM_CAPTURE;
 use function count;
 use function explode;
 use function implode;
@@ -27,6 +26,7 @@ use function strlen;
 use function strpos;
 use function substr;
 use function trim;
+use const PREG_SPLIT_DELIM_CAPTURE;
 
 /**
  * Creates a new Description object given a body of text.
@@ -69,10 +69,7 @@ class DescriptionFactory
         $tags     = [];
 
         for ($i = 1; $i < $count; $i += 2) {
-            $tag = $this->tagFactory->create($tokens[$i], $context);
-            if ($tag !== null) {
-                $tags[] = $tag;
-            }
+            $tags[]     = $this->tagFactory->create($tokens[$i], $context);
             $tokens[$i] = '%' . ++$tagCount . '$s';
         }
 
@@ -131,6 +128,7 @@ class DescriptionFactory
             PREG_SPLIT_DELIM_CAPTURE
         );
         Assert::isArray($parts);
+
         return $parts;
     }
 
@@ -160,9 +158,9 @@ class DescriptionFactory
 
         // determine how many whitespace characters need to be stripped
         $startingSpaceCount = 9999999;
-        for ($i = 1; $i < count($lines); ++$i) {
+        for ($i = 1, $iMax = count($lines); $i < $iMax; ++$i) {
             // lines with a no length do not count as they are not indented at all
-            if (strlen(trim($lines[$i])) === 0) {
+            if (trim($lines[$i]) === '') {
                 continue;
             }
 
@@ -173,7 +171,7 @@ class DescriptionFactory
 
         // strip the number of spaces from each line
         if ($startingSpaceCount > 0) {
-            for ($i = 1; $i < count($lines); ++$i) {
+            for ($i = 1, $iMax = count($lines); $i < $iMax; ++$i) {
                 $lines[$i] = substr($lines[$i], $startingSpaceCount);
             }
         }

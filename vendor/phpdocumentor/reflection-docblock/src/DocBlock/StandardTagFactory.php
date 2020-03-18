@@ -19,6 +19,7 @@ use phpDocumentor\Reflection\DocBlock\Tags\Covers;
 use phpDocumentor\Reflection\DocBlock\Tags\Deprecated;
 use phpDocumentor\Reflection\DocBlock\Tags\Factory\StaticMethod;
 use phpDocumentor\Reflection\DocBlock\Tags\Generic;
+use phpDocumentor\Reflection\DocBlock\Tags\InvalidTag;
 use phpDocumentor\Reflection\DocBlock\Tags\Link as LinkTag;
 use phpDocumentor\Reflection\DocBlock\Tags\Method;
 use phpDocumentor\Reflection\DocBlock\Tags\Param;
@@ -45,6 +46,7 @@ use function count;
 use function get_class;
 use function preg_match;
 use function strpos;
+use function trim;
 
 /**
  * Creates a Tag object given the contents of a tag.
@@ -66,11 +68,11 @@ use function strpos;
 final class StandardTagFactory implements TagFactory
 {
     /** PCRE regular expression matching a tag name. */
-    public const REGEX_TAGNAME = '[\w\-\_\\\\]+';
+    public const REGEX_TAGNAME = '[\w\-\_\\\\:]+';
 
     /**
-     * @var string[] An array with a tag as a key, and an
-     *      FQCN to a class that handles it as an array value.
+     * @var array<class-string<Tag>> An array with a tag as a key, and an
+     *                               FQCN to a class that handles it as an array value.
      */
     private $tagHandlerMappings = [
         'author' => Author::class,
@@ -95,7 +97,7 @@ final class StandardTagFactory implements TagFactory
     ];
 
     /**
-     * @var string[] An array with a anotation s a key, and an
+     * @var array<class-string<Tag>> An array with a anotation s a key, and an
      *      FQCN to a class that handles it as an array value.
      */
     private $annotationMappings = [];
@@ -123,7 +125,7 @@ final class StandardTagFactory implements TagFactory
      *
      * @see self::registerTagHandler() to add a new tag handler to the existing default list.
      *
-     * @param string[] $tagHandlers
+     * @param array<class-string<Tag>> $tagHandlers
      */
     public function __construct(FqsenResolver $fqsenResolver, ?array $tagHandlers = null)
     {
@@ -135,10 +137,7 @@ final class StandardTagFactory implements TagFactory
         $this->addService($fqsenResolver, FqsenResolver::class);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function create(string $tagLine, ?TypeContext $context = null) : ?Tag
+    public function create(string $tagLine, ?TypeContext $context = null) : Tag
     {
         if (!$context) {
             $context = new TypeContext('');
@@ -146,39 +145,26 @@ final class StandardTagFactory implements TagFactory
 
         [$tagName, $tagBody] = $this->extractTagParts($tagLine);
 
-        if ($tagBody !== '' && strpos($tagBody, '[') === 0) {
-            throw new InvalidArgumentException(
-                'The tag "' . $tagLine . '" does not seem to be wellformed, please check it for errors'
-            );
-        }
-
-        return $this->createTag($tagBody, $tagName, $context);
+        return $this->createTag(trim($tagBody), $tagName, $context);
     }
 
     /**
-     * {@inheritDoc}
+     * @param mixed $value
      */
     public function addParameter(string $name, $value) : void
     {
         $this->serviceLocator[$name] = $value;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function addService(object $service, ?string $alias = null) : void
     {
         $this->serviceLocator[$alias ?: get_class($service)] = $service;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function registerTagHandler(string $tagName, string $handler) : void
     {
         Assert::stringNotEmpty($tagName);
         Assert::classExists($handler);
-        /** @var object $handler stupid hack to make phpstan happy.  */
         Assert::implementsInterface($handler, StaticMethod::class);
 
         if (strpos($tagName, '\\') && $tagName[0] !== '\\') {
@@ -198,7 +184,7 @@ final class StandardTagFactory implements TagFactory
     private function extractTagParts(string $tagLine) : array
     {
         $matches = [];
-        if (!preg_match('/^@(' . self::REGEX_TAGNAME . ')(?:\s*([^\s].*)|$)/us', $tagLine, $matches)) {
+        if (!preg_match('/^@(' . self::REGEX_TAGNAME . ')((?:[\s\(\{])\s*([^\s].*)|$)/us', $tagLine, $matches)) {
             throw new InvalidArgumentException(
                 'The tag "' . $tagLine . '" does not seem to be wellformed, please check it for errors'
             );
@@ -215,7 +201,7 @@ final class StandardTagFactory implements TagFactory
      * Creates a new tag object with the given name and body or returns null if the tag name was recognized but the
      * body was invalid.
      */
-    private function createTag(string $body, string $name, TypeContext $context) : ?Tag
+    private function createTag(string $body, string $name, TypeContext $context) : Tag
     {
         $handlerClassName = $this->findHandlerClassName($name, $context);
         $arguments        = $this->getArgumentsForParametersFromWiring(
@@ -224,16 +210,21 @@ final class StandardTagFactory implements TagFactory
         );
 
         try {
-            /** @var callable $callable */
             $callable = [$handlerClassName, 'create'];
-            return call_user_func_array($callable, $arguments);
+            Assert::isCallable($callable);
+            /** @phpstan-var callable(string): ?Tag $callable */
+            $tag = call_user_func_array($callable, $arguments);
+
+            return $tag ?? InvalidTag::create($body, $name);
         } catch (InvalidArgumentException $e) {
-            return null;
+            return InvalidTag::create($body, $name)->withError($e);
         }
     }
 
     /**
      * Determines the Fully Qualified Class Name of the Factory or Tag (containing a Factory Method `create`).
+     *
+     * @return class-string<Tag>
      */
     private function findHandlerClassName(string $tagName, TypeContext $context) : string
     {

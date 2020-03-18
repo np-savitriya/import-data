@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Tests\Carbon;
 
 use Carbon\Carbon;
+use Carbon\CarbonInterval;
 use Carbon\Exceptions\NotLocaleAwareException;
 use Carbon\Language;
 use Carbon\Translator;
@@ -867,5 +868,49 @@ class LocalizationTest extends AbstractTestCase
             'parts' => 2,
             'join' => true,
         ]));
+    }
+
+    public function testStandAloneMonthsInLLLFormat()
+    {
+        $this->assertSame(
+            '29 февраля 2020 г., 12:24',
+            Carbon::parse('2020-02-29 12:24:00')->locale('ru_RU')->isoFormat('LLL')
+        );
+    }
+
+    public function testAgoDeclension()
+    {
+        $this->assertSame(
+            'година',
+            CarbonInterval::hour()->locale('uk')->forHumans(['aUnit' => true])
+        );
+
+        $this->assertSame(
+            'годину тому',
+            Carbon::now()->subHour()->locale('uk')->diffForHumans(['aUnit' => true])
+        );
+    }
+
+    public function testAustriaGermanJanuary()
+    {
+        $this->assertSame(
+            'Jänner',
+            Carbon::parse('2020-01-15')->locale('de_AT')->monthName
+        );
+
+        $this->assertSame(
+            'Januar',
+            Carbon::parse('2020-01-15')->locale('de')->monthName
+        );
+
+        $this->assertSame(
+            'Februar',
+            Carbon::parse('2020-02-15')->locale('de_AT')->monthName
+        );
+
+        $this->assertSame(
+            'Februar',
+            Carbon::parse('2020-02-15')->locale('de')->monthName
+        );
     }
 }

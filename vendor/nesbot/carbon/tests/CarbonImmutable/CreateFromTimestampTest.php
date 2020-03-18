@@ -25,9 +25,31 @@ class CreateFromTimestampTest extends AbstractTestCase
 
     public function testCreateFromTimestampMS()
     {
-        $timestamp = Carbon::create(1975, 5, 21, 22, 32, 5)->timestamp * 1000 + 321;
+        $baseTimestamp = Carbon::create(1975, 5, 21, 22, 32, 5)->timestamp * 1000;
+
+        $timestamp = $baseTimestamp + 321;
         $d = Carbon::createFromTimestampMs($timestamp);
         $this->assertCarbon($d, 1975, 5, 21, 22, 32, 5, 321000);
+
+        $timestamp = $baseTimestamp + 321.8;
+        $d = Carbon::createFromTimestampMs($timestamp);
+        $this->assertCarbon($d, 1975, 5, 21, 22, 32, 5, 321800);
+
+        $timestamp = $baseTimestamp + 321.84;
+        $d = Carbon::createFromTimestampMs($timestamp);
+        $this->assertCarbon($d, 1975, 5, 21, 22, 32, 5, 321840);
+
+        $timestamp = $baseTimestamp + 321.847;
+        $d = Carbon::createFromTimestampMs($timestamp);
+        $this->assertCarbon($d, 1975, 5, 21, 22, 32, 5, 321847);
+
+        $timestamp = $baseTimestamp + 321.8474;
+        $d = Carbon::createFromTimestampMs($timestamp);
+        $this->assertCarbon($d, 1975, 5, 21, 22, 32, 5, 321847);
+
+        $timestamp = $baseTimestamp + 321.8479;
+        $d = Carbon::createFromTimestampMs($timestamp);
+        $this->assertCarbon($d, 1975, 5, 21, 22, 32, 5, 321848);
     }
 
     public function testComaDecimalSeparatorLocale()
@@ -42,7 +64,9 @@ class CreateFromTimestampTest extends AbstractTestCase
         $this->assertCarbon($d, 1975, 5, 21, 22, 32, 5, 321000);
 
         $locale = setlocale(LC_ALL, '0');
-        setlocale(LC_ALL, 'fr_FR.UTF-8');
+        if (setlocale(LC_ALL, 'fr_FR.UTF-8') === false) {
+            $this->markTestSkipped('testComaDecimalSeparatorLocale test need fr_FR.UTF-8.');
+        }
 
         $timestamp = Carbon::create(1975, 5, 21, 22, 32, 5)->timestamp * 1000 + 321;
         $d = Carbon::createFromTimestampMs($timestamp);

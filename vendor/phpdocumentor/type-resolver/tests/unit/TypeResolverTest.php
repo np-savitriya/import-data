@@ -16,6 +16,7 @@ namespace phpDocumentor\Reflection;
 use Mockery as m;
 use phpDocumentor\Reflection\Types\Array_;
 use phpDocumentor\Reflection\Types\Boolean;
+use phpDocumentor\Reflection\Types\ClassString;
 use phpDocumentor\Reflection\Types\Compound;
 use phpDocumentor\Reflection\Types\Context;
 use phpDocumentor\Reflection\Types\Iterable_;
@@ -62,6 +63,30 @@ class TypeResolverTest extends TestCase
     /**
      * @uses         \phpDocumentor\Reflection\Types\Context
      * @uses         \phpDocumentor\Reflection\Types\Object_
+     * @uses         \phpDocumentor\Reflection\Types\String_
+     *
+     * @covers ::__construct
+     * @covers ::resolve
+     * @covers ::<private>
+     *
+     * @dataProvider provideClassStrings
+     */
+    public function testResolvingClassStrings(string $classString, bool $throwsException) : void
+    {
+        $fixture = new TypeResolver();
+
+        if ($throwsException) {
+            $this->expectException('RuntimeException');
+        }
+
+        $resolvedType = $fixture->resolve($classString, new Context(''));
+
+        $this->assertInstanceOf(ClassString::class, $resolvedType);
+    }
+
+    /**
+     * @uses         \phpDocumentor\Reflection\Types\Context
+     * @uses         \phpDocumentor\Reflection\Types\Object_
      * @uses         \phpDocumentor\Reflection\Fqsen
      * @uses         \phpDocumentor\Reflection\FqsenResolver
      *
@@ -75,7 +100,6 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Object_ $resolvedType */
         $resolvedType = $fixture->resolve($fqsen, new Context(''));
 
         $this->assertInstanceOf(Object_::class, $resolvedType);
@@ -97,7 +121,6 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Object_ $resolvedType */
         $resolvedType = $fixture->resolve('DocBlock', new Context('phpDocumentor\Reflection'));
 
         $this->assertInstanceOf(Object_::class, $resolvedType);
@@ -119,7 +142,6 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Object_ $resolvedType */
         $resolvedType = $fixture->resolve(
             'm\MockInterface',
             new Context('phpDocumentor\Reflection', ['m' => m::class])
@@ -143,7 +165,6 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Array_ $resolvedType */
         $resolvedType = $fixture->resolve('string[]', new Context(''));
 
         $this->assertInstanceOf(Array_::class, $resolvedType);
@@ -165,7 +186,6 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Nullable $resolvedType */
         $resolvedType = $fixture->resolve('?string', new Context(''));
 
         $this->assertInstanceOf(Nullable::class, $resolvedType);
@@ -186,10 +206,8 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Array_ $resolvedType */
         $resolvedType = $fixture->resolve('string[][]', new Context(''));
 
-        /** @var Array_ $childValueType */
         $childValueType = $resolvedType->getValueType();
 
         $this->assertInstanceOf(Array_::class, $resolvedType);
@@ -219,16 +237,13 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Compound $resolvedType */
         $resolvedType = $fixture->resolve('string|Reflection\DocBlock', new Context('phpDocumentor'));
 
         $this->assertInstanceOf(Compound::class, $resolvedType);
         $this->assertSame('string|\phpDocumentor\Reflection\DocBlock', (string) $resolvedType);
 
-        /** @var string $secondType */
         $firstType = $resolvedType->get(0);
 
-        /** @var Object_ $secondType */
         $secondType = $resolvedType->get(1);
 
         $this->assertInstanceOf(Types\String_::class, $firstType);
@@ -252,16 +267,13 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Compound $resolvedType */
         $resolvedType = $fixture->resolve('\stdClass[]|Reflection\DocBlock[]', new Context('phpDocumentor'));
 
         $this->assertInstanceOf(Compound::class, $resolvedType);
         $this->assertSame('\stdClass[]|\phpDocumentor\Reflection\DocBlock[]', (string) $resolvedType);
 
-        /** @var Array_ $firstType */
         $firstType = $resolvedType->get(0);
 
-        /** @var Array_ $secondType */
         $secondType = $resolvedType->get(1);
 
         $this->assertInstanceOf(Array_::class, $firstType);
@@ -309,21 +321,17 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Array_ $resolvedType */
         $resolvedType = $fixture->resolve('(\stdClass|Reflection\DocBlock)[]', new Context('phpDocumentor'));
 
         $this->assertInstanceOf(Array_::class, $resolvedType);
         $this->assertSame('(\stdClass|\phpDocumentor\Reflection\DocBlock)[]', (string) $resolvedType);
 
-        /** @var Compound $valueType */
         $valueType = $resolvedType->getValueType();
 
         $this->assertInstanceOf(Compound::class, $valueType);
 
-        /** @var Object_ $firstType */
         $firstType = $valueType->get(0);
 
-        /** @var Object_ $secondType */
         $secondType = $valueType->get(1);
 
         $this->assertInstanceOf(Object_::class, $firstType);
@@ -346,24 +354,19 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Array_ $resolvedType */
         $resolvedType = $fixture->resolve('(string|\stdClass|boolean)[]', new Context(''));
 
         $this->assertInstanceOf(Array_::class, $resolvedType);
         $this->assertSame('(string|\stdClass|bool)[]', (string) $resolvedType);
 
-        /** @var Compound $valueType */
         $valueType = $resolvedType->getValueType();
 
         $this->assertInstanceOf(Compound::class, $valueType);
 
-        /** @var String_ $firstType */
         $firstType = $valueType->get(0);
 
-        /** @var Object_ $secondType */
         $secondType = $valueType->get(1);
 
-        /** @var Boolean $thirdType */
         $thirdType = $valueType->get(2);
 
         $this->assertInstanceOf(String_::class, $firstType);
@@ -387,24 +390,19 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Array_ $resolvedType */
         $resolvedType = $fixture->resolve('(string|\stdClass)[][]', new Context(''));
 
         $this->assertInstanceOf(Array_::class, $resolvedType);
         $this->assertSame('(string|\stdClass)[][]', (string) $resolvedType);
 
-        /** @var Array_ $parentArrayType */
         $parentArrayType = $resolvedType->getValueType();
         $this->assertInstanceOf(Array_::class, $parentArrayType);
 
-        /** @var Compound $valueType */
         $valueType = $parentArrayType->getValueType();
         $this->assertInstanceOf(Compound::class, $valueType);
 
-        /** @var String_ $firstType */
         $firstType = $valueType->get(0);
 
-        /** @var Object_ $secondType */
         $secondType = $valueType->get(1);
 
         $this->assertInstanceOf(String_::class, $firstType);
@@ -427,7 +425,6 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Compound $resolvedType */
         $resolvedType = $fixture->resolve('(string|\stdClass', new Context(''));
 
         $this->assertInstanceOf(Compound::class, $resolvedType);
@@ -450,32 +447,25 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Compound $resolvedType */
         $resolvedType = $fixture->resolve('\stdClass|(string|\stdClass)[]|bool', new Context(''));
 
         $this->assertInstanceOf(Compound::class, $resolvedType);
         $this->assertSame('\stdClass|(string|\stdClass)[]|bool', (string) $resolvedType);
 
-        /** @var Object_ $firstType */
         $firstType = $resolvedType->get(0);
         $this->assertInstanceOf(Object_::class, $firstType);
 
-        /** @var Array_ $secondType */
         $secondType = $resolvedType->get(1);
         $this->assertInstanceOf(Array_::class, $secondType);
 
-        /** @var Array_ $thirdType */
         $thirdType = $resolvedType->get(2);
         $this->assertInstanceOf(Boolean::class, $thirdType);
 
-        /** @var Compound $valueType */
         $valueType = $secondType->getValueType();
         $this->assertInstanceOf(Compound::class, $valueType);
 
-        /** @var String_ $firstArrayType */
         $firstArrayType = $valueType->get(0);
 
-        /** @var Object_ $secondArrayType */
         $secondArrayType = $valueType->get(1);
 
         $this->assertInstanceOf(String_::class, $firstArrayType);
@@ -498,24 +488,19 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Iterable_ $resolvedType */
         $resolvedType = $fixture->resolve('iterable<string|\stdClass|boolean>', new Context(''));
 
         $this->assertInstanceOf(Iterable_::class, $resolvedType);
         $this->assertSame('iterable<string|\stdClass|bool>', (string) $resolvedType);
 
-        /** @var Compound $valueType */
         $valueType = $resolvedType->getValueType();
 
         $this->assertInstanceOf(Compound::class, $valueType);
 
-        /** @var String_ $firstType */
         $firstType = $valueType->get(0);
 
-        /** @var Object_ $secondType */
         $secondType = $valueType->get(1);
 
-        /** @var Boolean $thirdType */
         $thirdType = $valueType->get(2);
 
         $this->assertInstanceOf(String_::class, $firstType);
@@ -545,16 +530,13 @@ class TypeResolverTest extends TestCase
     {
         $fixture = new TypeResolver();
 
-        /** @var Compound $resolvedType */
         $resolvedType = $fixture->resolve('integer[]|string[]', new Context(''));
 
         $this->assertInstanceOf(Compound::class, $resolvedType);
         $this->assertSame('int[]|string[]', (string) $resolvedType);
 
-        /** @var Array_ $firstType */
         $firstType = $resolvedType->get(0);
 
-        /** @var Array_ $secondType */
         $secondType = $resolvedType->get(1);
 
         $this->assertInstanceOf(Array_::class, $firstType);
@@ -634,6 +616,7 @@ class TypeResolverTest extends TestCase
     {
         return [
             ['string', Types\String_::class],
+            ['class-string', Types\ClassString::class],
             ['int', Types\Integer::class],
             ['integer', Types\Integer::class],
             ['float', Types\Float_::class],
@@ -654,6 +637,20 @@ class TypeResolverTest extends TestCase
             ['self', Types\Self_::class],
             ['parent', Types\Parent_::class],
             ['iterable', Iterable_::class],
+        ];
+    }
+
+    /**
+     * Returns a list of class string types and whether they throw an exception.
+     *
+     * @return (string|bool)[][]
+     */
+    public function provideClassStrings() : array
+    {
+        return [
+            ['class-string<\phpDocumentor\Reflection>', false],
+            ['class-string<\phpDocumentor\Reflection\DocBlock>', false],
+            ['class-string<string>', true],
         ];
     }
 

@@ -49,7 +49,7 @@ interface TagFactory
      *
      * @throws InvalidArgumentException If an invalid tag line was presented.
      */
-    public function create(string $tagLine, ?TypeContext $context = null) : ?Tag;
+    public function create(string $tagLine, ?TypeContext $context = null) : Tag;
 
     /**
      * Registers a service with the Service Locator using the FQCN of the class or the alias, if provided.
@@ -69,9 +69,9 @@ interface TagFactory
      * to register the name of a tag with the FQCN of a 'Tag Handler'. The Tag handler should implement
      * the {@see Tag} interface (and thus the create method).
      *
-     * @param string $tagName Name of tag to register a handler for. When registering a namespaced tag,
-     *                        the full name, along with a prefixing slash MUST be provided.
-     * @param string $handler FQCN of handler.
+     * @param string                    $tagName Name of tag to register a handler for. When registering a namespaced
+     *                                   tag, the full name, along with a prefixing slash MUST be provided.
+     * @param class-string<Tag>         $handler FQCN of handler.
      *
      * @throws InvalidArgumentException If the tag name is not a string.
      * @throws InvalidArgumentException If the tag name is namespaced (contains backslashes) but

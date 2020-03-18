@@ -32,7 +32,7 @@ before_install:
   - if [[ $laravel = 'true' ]]; then echo "extension = memcached.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini; fi
   - if [[ $laravel = 'true' ]]; then printf "\n" | pecl install -f redis; fi
   - if [[ $laravel = 'true' ]]; then travis_retry composer self-update; fi
-  - if [[ $laravel = 'true' ]]; then mysql -e 'CREATE DATABASE forge;'; fi
+  - if [[ $laravel = 'true' ]]; then mysql -e 'CREATE DATABASE forge;' && mysql -u root -e "CREATE USER 'forge'@'localhost';" && mysql -u root -e "GRANT ALL ON forge.* TO 'forge'@'localhost';"; fi
 
 install:
   - composer remove --no-update friendsofphp/php-cs-fixer
@@ -49,7 +49,7 @@ install:
     fi
 
 script:
-  - if [[ $laravel != 'true' && $style_check != 'true' && $coverage = 'true' ]]; then phpunit --verbose --coverage-clover=coverage.xml --coverage-text; fi
+  - if [[ $laravel != 'true' && $style_check != 'true' && $coverage = 'true' ]]; then vendor/bin/phpunit --verbose --coverage-clover=coverage.xml --coverage-text; fi
   - if [[ $laravel != 'true' && $style_check != 'true' && $coverage != 'true' ]]; then composer phpunit; fi
   - if [[ $laravel != 'true' && $style_check = 'true' ]]; then composer style-check; fi
   - if [[ $laravel = 'true' ]]; then vendor/bin/multi-tester; fi
@@ -65,12 +65,6 @@ branches:
 matrix:
   include:
     - php: 7.1.8
-    - php: 7.1.9
-    - php: 7.1.11
-    - php: 7.1.15
-    - php: 7.1.17
-    - php: 7.1.20
-    - php: 7.1.24
     - php: 7.1.28
     - php: 7.1
     - php: 7.1
@@ -79,10 +73,6 @@ matrix:
       env: setup=stable
 
     - php: 7.2.0
-    - php: 7.2.3
-    - php: 7.2.5
-    - php: 7.2.8
-    - php: 7.2.12
     - php: 7.2.15
     - php: 7.2
     - php: 7.2
@@ -91,9 +81,6 @@ matrix:
       env: setup=stable
 
     - php: 7.3.0
-    - php: 7.3.1
-    - php: 7.3.2
-    - php: 7.3.4
     - php: 7.3.5
     - php: 7.3
     - php: 7.3

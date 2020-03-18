@@ -16,6 +16,7 @@ namespace phpDocumentor\Reflection;
 use ArrayIterator;
 use InvalidArgumentException;
 use phpDocumentor\Reflection\Types\Array_;
+use phpDocumentor\Reflection\Types\ClassString;
 use phpDocumentor\Reflection\Types\Collection;
 use phpDocumentor\Reflection\Types\Compound;
 use phpDocumentor\Reflection\Types\Context;
@@ -25,9 +26,7 @@ use phpDocumentor\Reflection\Types\Nullable;
 use phpDocumentor\Reflection\Types\Object_;
 use phpDocumentor\Reflection\Types\String_;
 use RuntimeException;
-use const PREG_SPLIT_DELIM_CAPTURE;
-use const PREG_SPLIT_NO_EMPTY;
-use function array_keys;
+use function array_key_exists;
 use function array_pop;
 use function class_exists;
 use function class_implements;
@@ -39,6 +38,8 @@ use function strpos;
 use function strtolower;
 use function substr;
 use function trim;
+use const PREG_SPLIT_DELIM_CAPTURE;
+use const PREG_SPLIT_NO_EMPTY;
 
 final class TypeResolver
 {
@@ -66,6 +67,7 @@ final class TypeResolver
      */
     private $keywords = [
         'string' => Types\String_::class,
+        'class-string' => Types\ClassString::class,
         'int' => Types\Integer::class,
         'integer' => Types\Integer::class,
         'bool' => Types\Boolean::class,
@@ -149,8 +151,8 @@ final class TypeResolver
     /**
      * Analyse each tokens and creates types
      *
-     * @param ArrayIterator $tokens        the iterator on tokens
-     * @param int           $parserContext on of self::PARSER_* constants, indicating
+     * @param ArrayIterator<int, string> $tokens        the iterator on tokens
+     * @param int                        $parserContext on of self::PARSER_* constants, indicating
      * the context where we are in the parsing
      */
     private function parseTypes(ArrayIterator $tokens, Context $context, int $parserContext) : Type
@@ -167,9 +169,11 @@ final class TypeResolver
                     );
                 }
 
-                if ($parserContext !== self::PARSER_IN_COMPOUND
-                    && $parserContext !== self::PARSER_IN_ARRAY_EXPRESSION
-                    && $parserContext !== self::PARSER_IN_COLLECTION_EXPRESSION
+                if (!in_array($parserContext, [
+                    self::PARSER_IN_COMPOUND,
+                    self::PARSER_IN_ARRAY_EXPRESSION,
+                    self::PARSER_IN_COLLECTION_EXPRESSION,
+                ], true)
                 ) {
                     throw new RuntimeException(
                         'Unexpected type separator'
@@ -178,9 +182,11 @@ final class TypeResolver
 
                 $tokens->next();
             } elseif ($token === '?') {
-                if ($parserContext !== self::PARSER_IN_COMPOUND
-                    && $parserContext !== self::PARSER_IN_ARRAY_EXPRESSION
-                    && $parserContext !== self::PARSER_IN_COLLECTION_EXPRESSION
+                if (!in_array($parserContext, [
+                    self::PARSER_IN_COMPOUND,
+                    self::PARSER_IN_ARRAY_EXPRESSION,
+                    self::PARSER_IN_COLLECTION_EXPRESSION,
+                ], true)
                 ) {
                     throw new RuntimeException(
                         'Unexpected nullable character'
@@ -221,7 +227,11 @@ final class TypeResolver
 
                 $classType = array_pop($types);
                 if ($classType !== null) {
-                    $types[] = $this->resolveCollection($tokens, $classType, $context);
+                    if ((string) $classType === 'class-string') {
+                        $types[] = $this->resolveClassString($tokens, $context);
+                    } else {
+                        $types[] = $this->resolveCollection($tokens, $classType, $context);
+                    }
                 }
 
                 $tokens->next();
@@ -278,7 +288,7 @@ final class TypeResolver
      *
      * @return Type|Array_|Object_
      */
-    private function resolveSingleType(string $type, Context $context)
+    private function resolveSingleType(string $type, Context $context) : object
     {
         switch (true) {
             case $this->isKeyword($type):
@@ -289,6 +299,7 @@ final class TypeResolver
                 return $this->resolveTypedObject($type);
             case $this->isPartialStructuralElementName($type):
                 return $this->resolveTypedObject($type, $context);
+
             // @codeCoverageIgnoreStart
             default:
                 // I haven't got the foggiest how the logic would come here but added this as a defense.
@@ -340,7 +351,7 @@ final class TypeResolver
      */
     private function isKeyword(string $type) : bool
     {
-        return in_array(strtolower($type), array_keys($this->keywords), true);
+        return array_key_exists(strtolower($type), $this->keywords);
     }
 
     /**
@@ -375,6 +386,7 @@ final class TypeResolver
     private function resolveKeyword(string $type) : Type
     {
         $className = $this->keywords[strtolower($type)];
+
         return new $className();
     }
 
@@ -387,7 +399,41 @@ final class TypeResolver
     }
 
     /**
+     * Resolves class string
+     *
+     * @param ArrayIterator<int, string> $tokens
+     */
+    private function resolveClassString(ArrayIterator $tokens, Context $context) : Type
+    {
+        $tokens->next();
+
+        $classType = $this->parseTypes($tokens, $context, self::PARSER_IN_COLLECTION_EXPRESSION);
+
+        if (!$classType instanceof Object_ || $classType->getFqsen() === null) {
+            throw new RuntimeException(
+                $classType . ' is not a class string'
+            );
+        }
+
+        if ($tokens->current() !== '>') {
+            if (empty($tokens->current())) {
+                throw new RuntimeException(
+                    'class-string: ">" is missing'
+                );
+            }
+
+            throw new RuntimeException(
+                'Unexpected character "' . $tokens->current() . '", ">" is missing'
+            );
+        }
+
+        return new ClassString($classType->getFqsen());
+    }
+
+    /**
      * Resolves the collection values and keys
+     *
+     * @param ArrayIterator<int, string> $tokens
      *
      * @return Array_|Iterable_|Collection
      */
@@ -462,7 +508,6 @@ final class TypeResolver
             return new Iterable_($valueType, $keyType);
         }
 
-        /** @psalm-suppress RedundantCondition */
         if ($classType instanceof Object_) {
             return $this->makeCollectionFromObject($classType, $valueType, $keyType);
         }
