@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "c0f36fc243ed36f4e409622c1604f166",
+    "content-hash": "c411c6b889d487828bf40fd9d03e1e3c",
     "packages": [
         {
             "name": "doctrine/inflector",
@@ -119,16 +119,16 @@
         },
         {
             "name": "illuminate/support",
-            "version": "v7.1.0",
+            "version": "v7.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/support.git",
-                "reference": "fdbe1f88a9118ab26aa2e414640cd92f9e2aefdf"
+                "reference": "68915182f18dca20e6c27b82e4007c11cf25f165"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/illuminate/support/zipball/fdbe1f88a9118ab26aa2e414640cd92f9e2aefdf",
-                "reference": "fdbe1f88a9118ab26aa2e414640cd92f9e2aefdf",
+                "url": "https://api.github.com/repos/illuminate/support/zipball/68915182f18dca20e6c27b82e4007c11cf25f165",
+                "reference": "68915182f18dca20e6c27b82e4007c11cf25f165",
                 "shasum": ""
             },
             "require": {
@@ -177,7 +177,7 @@
             ],
             "description": "The Illuminate Support package.",
             "homepage": "https://laravel.com",
-            "time": "2020-03-10T13:45:36+00:00"
+            "time": "2020-03-16T13:40:39+00:00"
         },
         {
             "name": "maatwebsite/excel",
