@@ -67,6 +67,6 @@ return array(
     '883af48563631547925fa4c3b48ead07' => $vendorDir . '/markbaker/complex/classes/src/operations/multiply.php',
     'f190e3308e6ca23234a2875edc985c03' => $vendorDir . '/markbaker/complex/classes/src/operations/divideby.php',
     'ac9e33ce6841aa5bf5d16d465a2f03a7' => $vendorDir . '/markbaker/complex/classes/src/operations/divideinto.php',
-    '72579e7bd17821bb1321b87411366eae' => $vendorDir . '/illuminate/support/helpers.php',
     '6124b4c8570aa390c21fafd04a26c69f' => $vendorDir . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
+    '72579e7bd17821bb1321b87411366eae' => $vendorDir . '/illuminate/support/helpers.php',
 );
