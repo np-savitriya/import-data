@@ -8,6 +8,7 @@
 
 namespace Import\ImportData;
 
+use App\Models\AccountType;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Routing\Controller;
 use Illuminate\Support\Facades\Schema;
@@ -39,6 +40,7 @@ use App\Models\MeasurementUnit;
 use App\Models\ComponentCategory;
 use App\Models\ComponentManufacturer;
 use App\Models\ReplenishmentMethod;
+use App\Models\GLAccount;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Import\ImportData\DataExport;
@@ -55,6 +57,7 @@ class ImportDataController extends Controller
             // $module = $file['module'];
             $file = $request->file('myFile');
             $mod = $request->input('module');
+
             $fileName = $request->input('fileName');
             $unitNo = 0;
            $notFoundArr = [];
@@ -71,31 +74,38 @@ class ImportDataController extends Controller
                     
                     if(!isset($fileName)){
 
-                        // $path = $file->getRealPath();
+                         $path = $file->getRealPath();
                         if (!file_exists(base_path('public') . "/exports")) {
                             mkdir(base_path('public') . "/exports", 0777, true);
                         }
-                            // if ( strtolower($file->clientExtension()) == 'xls' ) {
-                    
-                            //     $fileType = \PHPExcel_IOFactory::identify($path);
-                                
-                            //     $objReader = \PHPExcel_IOFactory::createReader($fileType);
-                            //     $objReader->setReadDataOnly(true);
-                            //     $objPHPExcel = $objReader->load($path);
+                             if ( strtolower($file->clientExtension()) == 'xls' ) {
 
-                            //     //if file exist delete it
-                            //     if (file_exists(storage_path().'/'.$mod.'xlsx')) unlink(storage_path().'/'.$mod.'xlsx');
+                                 $fileType = \PHPExcel_IOFactory::identify($path);
 
-                            //     $writer = \PHPExcel_IOFactory::createWriter($objPHPExcel,"Excel2007");
-                            //     $writer->save( storage_path().'/'.$mod.'xlsx');
-                            //     $path = storage_path().'/'.$mod.'xlsx';
-                            // }
-            
-                            $fileName = "";
-                            $fileName = $file->getClientOriginalName();
-                            $fileName = $mod . "_" . round(microtime(true) * 1000) . "_" . $fileName;
-                            $fullPath = $file->move(base_path('public') . '/exports/', $fileName);
-                            
+                                 $objReader = \PHPExcel_IOFactory::createReader($fileType);
+                                 $objReader->setReadDataOnly(true);
+                                 $objPHPExcel = $objReader->load($path);
+
+                                 //if file exist delete it
+                                 if (file_exists(base_path('public') . '/exports'.'/'.$mod.'xlsx')) unlink(base_path('public') . '/exports'.'/'.$mod.'xlsx');
+
+                                 $writer = \PHPExcel_IOFactory::createWriter($objPHPExcel,"Excel2007");
+                                 $fileName = "";
+                                 $fileName = base_path('public') . '/exports'.'/'.$mod . "_" . round(microtime(true) * 1000) .'.xlsx';
+                                 $writer->save($fileName );
+//                                 $fileName =  $fileName;
+//                                 echo "here come";
+                             }
+                             else{
+                                 $fileName = "";
+                                $fileName = $file->getClientOriginalName();
+                                $fileName = $mod . "_" . round(microtime(true) * 1000) . "_" . $fileName;
+                                $fullPath = $file->move(base_path('public') . '/exports/', $fileName);
+//                                echo "in else";
+
+                             }
+
+//
                             // return $fileName;
                                 $response['code'] = 200;
                                 $response["status"] = "success";
@@ -106,7 +116,9 @@ class ImportDataController extends Controller
                                     ->header('Content_type', 'application/json');
                     }
 
-            $path = base_path('public') . '/exports/'.$fileName;
+//            $path = base_path('public') . '/exports/'.$fileName;
+            $path = $fileName;
+//                    echo $path;exit;
             // $reader = Excel::load($path)->get();
             // $reader = Excel::toArray(new DataImport, $path, null, \Maatwebsite\Excel\Excel::XLSX); 
 
@@ -139,7 +151,7 @@ class ImportDataController extends Controller
                 
             }
                 // return $reader;
-            
+
             if($mod == 'User'){
                 $mod = "App"."\\".$mod;
             }else{
@@ -379,9 +391,9 @@ class ImportDataController extends Controller
         $excel['file'] = $module;
         // chmod($excel['full'], 0777);
 
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-        $domainName = $_SERVER['HTTP_HOST'];
-        $excel['web'] = $protocol . $domainName . '/api/exports/' . $fileName;
+//        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $domainName = env('HOST');
+        $excel['web'] =  $domainName . '/api/exports/' . $fileName;
 
         $response['code'] = 200;
         $response["status"] = "success";
@@ -404,14 +416,16 @@ class ImportDataController extends Controller
             $unitNo = 0;
             $moduleName = $mod;
             $selectArr = json_decode($selectedArr);
+
             $notFoundArr = [];
-            $conditionalColumn = ['location_name','group_name','unit_number','component_code','role_name','customer_number','city_name','state_name','country_name','timezone','category_name','parent_name','stock_unit_name','vendor_name','manufacturer_name','tax_name','warranty_name','purchase_unit_name','item_measurement_name','metric_type_name','replenishment_method_name'];
+            $conditionalColumn = ['location_name','account_type_name','group_name','unit_number','component_code','role_name','customer_number','city_name','state_name','country_name','timezone','category_name','parent_name','stock_unit_name','vendor_name','manufacturer_name','tax_name','warranty_name','purchase_unit_name','item_measurement_name','metric_type_name','replenishment_method_name'];
 
             // $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), '=', '%' . strtolower($mod) . '%')->first();
 
             $modu = strtolower($mod);
+
             $moduleId = Module::where(\DB::raw("REPLACE(name, ' ', '')"), '=', $modu)->first();
-            
+
             if($mod == 'User'){
                 $mod = "App"."\\".$mod;
             }else{
@@ -419,13 +433,13 @@ class ImportDataController extends Controller
             }
             
             if ( isset($fileName)) {
-               
-                $path = base_path('public') . '/exports/'.$fileName;
+
+                $path = $fileName;
                 // $reader = Excel::load($path)->get();
+//                echo $path;exit;
 
-                $reader = Excel::toArray(new DataImport, $path, null, \Maatwebsite\Excel\Excel::XLSX); 
+                $reader = Excel::toArray(new DataImport, $path, null, \Maatwebsite\Excel\Excel::XLSX);
 
-               
                 // $singleRow = $reader->toArray(); // no need to parse whole sheet for the headings
                 // $headings['headers'] = $reader->getHeading();
                 $headArr = [];
@@ -506,8 +520,9 @@ class ImportDataController extends Controller
                         //    return is_object($selectArr[$j]);
                         
                             if(isset($selectArr[$j]) && !is_object($selectArr[$j]->text)){
+
                                 if(!in_array($selectArr[$j]->value,$conditionalColumn)){
-                               
+
                                 // if($selectArr[$j]->value != 'location_name' && $selectArr[$j]->value != 'group_name' && $selectArr[$j]->value != 'role_name'){
                                     $column = $data->value;
                                     $value = $selectArr[$j]->value;
@@ -521,8 +536,12 @@ class ImportDataController extends Controller
                                         $vehId = Asset::where('unit_no',$head[$selectArr[$j]->value])->pluck('id')->first();
                                         $mod->vehicle_id = $vehId;
                                     }
-                                    if($selectArr[$j]->value == 'parent_name'){
+
+                                    if($selectArr[$j]->value == 'parent_name' && $modu=='glaccount' ){
                                         // continue;
+                                        $mod->parent_id = 0;
+                                    }
+                                    if($selectArr[$j]->value == 'parent_name' && $modu!='glaccount'){
                                         $mod->parent_id = NULL;
                                     }
                                       
@@ -572,6 +591,12 @@ class ImportDataController extends Controller
                                         $catId = ComponentCategory::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
                                         $mod->category_id = $catId;
                                     }
+                                    if($selectArr[$j]->value == 'account_type_name'){
+
+                                        $accId = AccountType::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
+                                        $mod->account_type_id = $accId;
+                                    }
+
                                     if($selectArr[$j]->value == 'location_name'){
                                         $loc = explode(',',$head[$selectArr[$j]->value]);
                                         if(isset($loc[1])){
@@ -625,6 +650,7 @@ class ImportDataController extends Controller
                                         }
                                         $mod->timezone = $tmId;
                                     }
+
                                 }
                             }else{
                                 if(!in_array($selectArr[$j]->text->value,$conditionalColumn)){
