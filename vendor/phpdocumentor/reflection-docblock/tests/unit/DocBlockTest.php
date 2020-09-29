@@ -124,15 +124,17 @@ class DocBlockTest extends TestCase
         $tag1 = m::mock(DocBlock\Tag::class);
         $tag2 = m::mock(DocBlock\Tag::class);
         $tag3 = m::mock(DocBlock\Tag::class);
-        $tags = [$tag1, $tag2, $tag3];
+        $tag4 = m::mock(DocBlock\Tag::class);
+        $tags = [$tag1, $tag2, $tag3, $tag4];
 
         $tag1->shouldReceive('getName')->andReturn('abc');
         $tag2->shouldReceive('getName')->andReturn('abcd');
+        $tag4->shouldReceive('getName')->andReturn('abcd');
         $tag3->shouldReceive('getName')->andReturn('ab');
 
         $fixture = new DocBlock('', null, $tags);
 
-        $this->assertSame([$tag2], $fixture->getTagsByName('abcd'));
+        $this->assertSame([$tag2, $tag4], $fixture->getTagsByName('abcd'));
         $this->assertSame([], $fixture->getTagsByName('Ebcd'));
     }
 
@@ -191,6 +193,21 @@ class DocBlockTest extends TestCase
         $fixture = new DocBlock('', null, [], null, $location);
 
         $this->assertSame($location, $fixture->getLocation());
+    }
+
+    /**
+     * @uses \phpDocumentor\Reflection\DocBlock\Description
+     *
+     * @covers ::__construct
+     * @covers ::isTemplateStart
+     * @covers ::isTemplateEnd
+     */
+    public function testDocBlockIsNotATemplateByDefault() : void
+    {
+        $fixture = new DocBlock('', null, [], null, null);
+
+        $this->assertFalse($fixture->isTemplateStart());
+        $this->assertFalse($fixture->isTemplateEnd());
     }
 
     /**

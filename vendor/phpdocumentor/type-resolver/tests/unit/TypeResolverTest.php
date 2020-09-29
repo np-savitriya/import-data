@@ -13,13 +13,16 @@ declare(strict_types=1);
 
 namespace phpDocumentor\Reflection;
 
-use Mockery as m;
 use phpDocumentor\Reflection\Types\Array_;
 use phpDocumentor\Reflection\Types\Boolean;
 use phpDocumentor\Reflection\Types\ClassString;
 use phpDocumentor\Reflection\Types\Compound;
 use phpDocumentor\Reflection\Types\Context;
+use phpDocumentor\Reflection\Types\Expression;
+use phpDocumentor\Reflection\Types\Integer;
+use phpDocumentor\Reflection\Types\Intersection;
 use phpDocumentor\Reflection\Types\Iterable_;
+use phpDocumentor\Reflection\Types\Null_;
 use phpDocumentor\Reflection\Types\Nullable;
 use phpDocumentor\Reflection\Types\Object_;
 use phpDocumentor\Reflection\Types\String_;
@@ -32,14 +35,6 @@ use function get_class;
  */
 class TypeResolverTest extends TestCase
 {
-    /**
-     * Call Mockery::close after each test.
-     */
-    public function tearDown() : void
-    {
-        m::close();
-    }
-
     /**
      * @uses         \phpDocumentor\Reflection\Types\Context
      * @uses         \phpDocumentor\Reflection\Types\Array_
@@ -143,13 +138,13 @@ class TypeResolverTest extends TestCase
         $fixture = new TypeResolver();
 
         $resolvedType = $fixture->resolve(
-            'm\MockInterface',
-            new Context('phpDocumentor\Reflection', ['m' => m::class])
+            'm\Array_',
+            new Context('phpDocumentor\Reflection', ['m' => '\phpDocumentor\Reflection\Types'])
         );
 
         $this->assertInstanceOf(Object_::class, $resolvedType);
         $this->assertInstanceOf(Fqsen::class, $resolvedType->getFqsen());
-        $this->assertSame('\Mockery\MockInterface', (string) $resolvedType);
+        $this->assertSame('\phpDocumentor\Reflection\Types\Array_', (string) $resolvedType);
     }
 
     /**
@@ -249,6 +244,92 @@ class TypeResolverTest extends TestCase
         $this->assertInstanceOf(Types\String_::class, $firstType);
         $this->assertInstanceOf(Object_::class, $secondType);
         $this->assertInstanceOf(Fqsen::class, $secondType->getFqsen());
+    }
+
+    /**
+     * @uses \phpDocumentor\Reflection\Types\Context
+     * @uses \phpDocumentor\Reflection\Types\Compound
+     * @uses \phpDocumentor\Reflection\Types\String_
+     * @uses \phpDocumentor\Reflection\Types\Object_
+     * @uses \phpDocumentor\Reflection\Fqsen
+     * @uses \phpDocumentor\Reflection\FqsenResolver
+     *
+     * @covers ::__construct
+     * @covers ::resolve
+     * @covers ::<private>
+     */
+    public function testResolvingAmpersandCompoundTypes() : void
+    {
+        $fixture = new TypeResolver();
+
+        $resolvedType = $fixture->resolve(
+            'Reflection\DocBlock&\PHPUnit\Framework\MockObject\MockObject ',
+            new Context('phpDocumentor')
+        );
+
+        $this->assertInstanceOf(Intersection::class, $resolvedType);
+        $this->assertSame(
+            '\phpDocumentor\Reflection\DocBlock&\PHPUnit\Framework\MockObject\MockObject',
+            (string) $resolvedType
+        );
+
+        $firstType = $resolvedType->get(0);
+
+        $secondType = $resolvedType->get(1);
+
+        $this->assertInstanceOf(Object_::class, $firstType);
+        $this->assertInstanceOf(Fqsen::class, $firstType->getFqsen());
+        $this->assertInstanceOf(Object_::class, $secondType);
+        $this->assertInstanceOf(Fqsen::class, $secondType->getFqsen());
+    }
+
+    /**
+     * @uses \phpDocumentor\Reflection\Types\Context
+     * @uses \phpDocumentor\Reflection\Types\Compound
+     * @uses \phpDocumentor\Reflection\Types\String_
+     * @uses \phpDocumentor\Reflection\Types\Object_
+     * @uses \phpDocumentor\Reflection\Fqsen
+     * @uses \phpDocumentor\Reflection\FqsenResolver
+     *
+     * @covers ::__construct
+     * @covers ::resolve
+     * @covers ::<private>
+     */
+    public function testResolvingMixedCompoundTypes() : void
+    {
+        $fixture = new TypeResolver();
+
+        $resolvedType = $fixture->resolve(
+            '(Reflection\DocBlock&\PHPUnit\Framework\MockObject\MockObject)|null',
+            new Context('phpDocumentor')
+        );
+
+        $this->assertInstanceOf(Compound::class, $resolvedType);
+        $this->assertSame(
+            '(\phpDocumentor\Reflection\DocBlock&\PHPUnit\Framework\MockObject\MockObject)|null',
+            (string) $resolvedType
+        );
+
+        $firstType = $resolvedType->get(0);
+
+        $secondType = $resolvedType->get(1);
+
+        $this->assertInstanceOf(Expression::class, $firstType);
+        $this->assertSame(
+            '(\phpDocumentor\Reflection\DocBlock&\PHPUnit\Framework\MockObject\MockObject)',
+            (string) $firstType
+        );
+        $this->assertInstanceOf(Null_::class, $secondType);
+
+        $resolvedType = $firstType->getValueType();
+
+        $firstSubType = $resolvedType->get(0);
+        $secondSubType =  $resolvedType->get(1);
+
+        $this->assertInstanceOf(Object_::class, $firstSubType);
+        $this->assertInstanceOf(Fqsen::class, $secondSubType->getFqsen());
+        $this->assertInstanceOf(Object_::class, $secondSubType);
+        $this->assertInstanceOf(Fqsen::class, $secondSubType->getFqsen());
     }
 
     /**
@@ -556,7 +637,7 @@ class TypeResolverTest extends TestCase
     public function testAddingAKeyword() : void
     {
         // Assign
-        $typeMock = m::mock(Type::class);
+        $typeMock = self::createStub(Type::class);
 
         // Act
         $fixture = new TypeResolver();
@@ -623,6 +704,10 @@ class TypeResolverTest extends TestCase
             ['double', Types\Float_::class],
             ['bool', Types\Boolean::class],
             ['boolean', Types\Boolean::class],
+            ['true', Types\Boolean::class],
+            ['true', PseudoTypes\True_::class],
+            ['false', Types\Boolean::class],
+            ['false', PseudoTypes\False_::class],
             ['resource', Types\Resource_::class],
             ['null', Types\Null_::class],
             ['callable', Types\Callable_::class],
@@ -666,5 +751,19 @@ class TypeResolverTest extends TestCase
             'class' => ['\phpDocumentor\Reflection\DocBlock'],
             'class with emoji' => ['\My😁Class'],
         ];
+    }
+
+    /**
+     * @uses \phpDocumentor\Reflection\Types\Context
+     *
+     * @covers ::__construct
+     * @covers ::resolve
+     */
+    public function testArrayKeyValueSpecification() : void
+    {
+        $fixture = new TypeResolver();
+        $type = $fixture->resolve('array<string,array<int,string>>', new Context(''));
+
+        $this->assertEquals(new Array_(new Array_(new String_(), new Integer()), new String_()), $type);
     }
 }

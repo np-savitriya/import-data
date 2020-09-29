@@ -15,6 +15,8 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Carbon\CarbonInterval;
 use Closure;
+use Exception;
+use InvalidArgumentException;
 use Tests\AbstractTestCase;
 
 class DiffTest extends AbstractTestCase
@@ -546,6 +548,20 @@ class DiffTest extends AbstractTestCase
         $this->wrapWithTestNow(function () {
             $this->assertSame('1 second ago', Carbon::now()->diffForHumans());
         });
+    }
+
+    /**
+     * @see https://github.com/briannesbitt/Carbon/issues/2136
+     */
+    public function testDiffInTheFuture()
+    {
+        Carbon::setTestNow('2020-07-22 09:15');
+
+        $this->assertSame(
+            '1 week from now',
+            Carbon::parse('2020-07-30 13:51:15')
+                ->diffForHumans(['options' => CarbonInterface::ROUND])
+        );
     }
 
     public function testDiffForHumansNowAndSecondWithTimezone()
@@ -1505,7 +1521,7 @@ class DiffTest extends AbstractTestCase
 
     public function testDiffWithInvalidType()
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(
             'Expected null, string, DateTime or DateTimeInterface, integer given'
         );
@@ -1515,7 +1531,7 @@ class DiffTest extends AbstractTestCase
 
     public function testDiffWithInvalidObject()
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage(
             'Expected null, string, DateTime or DateTimeInterface, Carbon\CarbonInterval given'
         );
@@ -1525,7 +1541,7 @@ class DiffTest extends AbstractTestCase
 
     public function testDiffForHumansWithIncorrectDateTimeStringWhichIsNotACarbonInstance()
     {
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage(
             'Failed to parse time string (2018-04-13-08:00:00) at position 16'
         );
@@ -1544,6 +1560,7 @@ class DiffTest extends AbstractTestCase
         $this->assertSame(8986.665965, Carbon::parse('2018-03-31 23:55:12.321456')->floatDiffInSeconds(Carbon::parse('2018-04-01 02:24:58.987421')));
 
         $this->assertSame(1.0006944444444443, Carbon::parse('2018-12-01 00:00')->floatDiffInDays(Carbon::parse('2018-12-02 00:01')));
+        $this->assertSame(1.0006944444444443 / 7, Carbon::parse('2018-12-01 00:00')->floatDiffInWeeks(Carbon::parse('2018-12-02 00:01')));
 
         $this->assertSame(0.9714742503779745, Carbon::parse('2018-03-13 20:55:12.321456')->floatDiffInMonths(Carbon::parse('2018-04-12 14:24:58.987421')));
         $this->assertSame(1.1724137931034484, Carbon::parse('2000-01-15 00:00')->floatDiffInMonths(Carbon::parse('2000-02-20 00:00')));
@@ -1588,6 +1605,7 @@ class DiffTest extends AbstractTestCase
         date_default_timezone_set('UTC');
 
         $this->assertSame(1.0006944444444443, Carbon::parse('2018-12-01 00:00')->floatDiffInRealDays(Carbon::parse('2018-12-02 00:01')));
+        $this->assertSame(1.0006944444444443 / 7, Carbon::parse('2018-12-01 00:00')->floatDiffInRealWeeks(Carbon::parse('2018-12-02 00:01')));
 
         $this->assertSame(0.9714742503779745, Carbon::parse('2018-03-13 20:55:12.321456')->floatDiffInRealMonths(Carbon::parse('2018-04-12 14:24:58.987421')));
         $this->assertSame(0.9714742503779745, Carbon::parse('2018-04-12 14:24:58.987421')->floatDiffInRealMonths(Carbon::parse('2018-03-13 20:55:12.321456')));

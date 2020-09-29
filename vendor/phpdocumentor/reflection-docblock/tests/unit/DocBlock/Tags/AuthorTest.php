@@ -116,6 +116,23 @@ class AuthorTest extends TestCase
         $fixture = new Author('Mike van Riel', 'mike@phpdoc.org');
 
         $this->assertSame('Mike van Riel <mike@phpdoc.org>', (string) $fixture);
+
+        // ---
+
+        $fixture = new Author('0', 'zero@foo.bar');
+
+        $this->assertSame('0 <zero@foo.bar>', (string) $fixture);
+    }
+
+    /**
+     * @covers ::__construct
+     * @covers ::__toString
+     */
+    public function testStringRepresentationIsReturnedWithoutName() : void
+    {
+        $fixture = new Author('', 'mike@phpdoc.org');
+
+        $this->assertSame('<mike@phpdoc.org>', (string) $fixture);
     }
 
     /**
@@ -133,14 +150,40 @@ class AuthorTest extends TestCase
      * @uses \phpDocumentor\Reflection\DocBlock\Tags\Author::<public>
      *
      * @covers ::create
+     * @dataProvider authorTagProvider
      */
-    public function testFactoryMethod() : void
+    public function testFactoryMethod(string $input, string $output, string $name, string $email) : void
     {
-        $fixture = Author::create('Mike van Riel <mike@phpdoc.org>');
+        $fixture = Author::create($input);
 
-        $this->assertSame('Mike van Riel <mike@phpdoc.org>', (string) $fixture);
-        $this->assertSame('Mike van Riel', $fixture->getAuthorName());
-        $this->assertSame('mike@phpdoc.org', $fixture->getEmail());
+        $this->assertSame($output, (string) $fixture);
+        $this->assertSame($name, $fixture->getAuthorName());
+        $this->assertSame($email, $fixture->getEmail());
+    }
+
+    /** @return mixed[][] */
+    public function authorTagProvider() : array
+    {
+        return [
+            [
+                'Mike van Riel <mike@phpdoc.org>',
+                'Mike van Riel <mike@phpdoc.org>',
+                'Mike van Riel',
+                'mike@phpdoc.org',
+            ],
+            [
+                'Mike van Riel < mike@phpdoc.org >',
+                'Mike van Riel <mike@phpdoc.org>',
+                'Mike van Riel',
+                'mike@phpdoc.org',
+            ],
+            [
+                'Mike van Riel',
+                'Mike van Riel',
+                'Mike van Riel',
+                '',
+            ],
+        ];
     }
 
     /**

@@ -16,7 +16,6 @@ use Carbon\CarbonInterval;
 use Carbon\Exceptions\NotLocaleAwareException;
 use Carbon\Language;
 use Carbon\Translator;
-use ReflectionMethod;
 use Symfony\Component\Translation\IdentityTranslator;
 use Symfony\Component\Translation\Loader\ArrayLoader;
 use Symfony\Component\Translation\MessageCatalogue;
@@ -73,7 +72,7 @@ class LocalizationTest extends AbstractTestCase
         setlocale(LC_ALL, $currentLocale);
         rename(__DIR__.'/../../src/Carbon/Lang/disabled_ar_AE.php', __DIR__.'/../../src/Carbon/Lang/ar_AE.php');
 
-        $this->assertSame('ar', $locale);
+        $this->assertStringStartsWith('ar', $locale);
         $this->assertSame('منذ ثانيتين', $diff);
 
         if (setlocale(LC_ALL, 'sr_ME.UTF-8', 'sr_ME.utf8', 'sr_ME', 'sr') === false) {
@@ -696,25 +695,15 @@ class LocalizationTest extends AbstractTestCase
     public function testNotLocaleAwareException()
     {
         if (method_exists(TranslatorInterface::class, 'getLocale')) {
-            $this->markTestSkipped('In Symfony < 4, NotLocaleAwareException will never been thrown.');
+            $this->markTestSkipped('In Symfony < 5, NotLocaleAwareException will never been thrown.');
         }
 
-        $parameters = (new ReflectionMethod(TranslatorInterface::class, 'trans'))->getParameters();
-
-        /** @var TranslatorInterface $translator */
-        $translator = $parameters[0]->getType()->getName() === 'string'
-            ? (new class implements TranslatorInterface {
-                public function trans(string $id, array $parameters = [], string $domain = null, string $locale = null)
-                {
-                    return 'x';
-                }
-            })
-            : (new class implements TranslatorInterface {
-                public function trans($id, array $parameters = [], $domain = null, $locale = null)
-                {
-                    return 'x';
-                }
-            });
+        $translator = new class implements TranslatorInterface {
+            public function trans(string $id, array $parameters = [], string $domain = null, string $locale = null)
+            {
+                return 'x';
+            }
+        };
 
         Carbon::setTranslator($translator);
 
@@ -740,6 +729,13 @@ class LocalizationTest extends AbstractTestCase
         $this->assertSame('3 კვირაში', $diff);
     }
 
+    public function testSinhaleseSpecialAfterTranslation()
+    {
+        $diff = Carbon::now()->locale('si')->addDays(3)->diffForHumans(Carbon::now());
+
+        $this->assertSame('දින 3 න්', $diff);
+    }
+
     public function testWeekDayMultipleForms()
     {
         $date = Carbon::parse('2018-10-10')->locale('ru');
@@ -761,13 +757,15 @@ class LocalizationTest extends AbstractTestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage(
             'Translator does not implement Symfony\Component\Translation\TranslatorInterface '.
-            'and Symfony\Component\Translation\TranslatorBagInterface.'
+            'and Symfony\Component\Translation\TranslatorBagInterface. '.
+            'Symfony\Component\Translation\IdentityTranslator has been given.'
         );
 
         $date = Carbon::create(2018, 1, 1, 0, 0, 0);
-        $date->setLocalTranslator(class_exists(MessageSelector::class)
-            ? new IdentityTranslator(new MessageSelector())
-            : new IdentityTranslator()
+        $date->setLocalTranslator(
+            class_exists(MessageSelector::class)
+                ? new IdentityTranslator(new MessageSelector())
+                : new IdentityTranslator()
         );
 
         $date->getTranslationMessage('foo');
