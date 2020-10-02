@@ -41,6 +41,7 @@ use App\Models\ComponentCategory;
 use App\Models\ComponentManufacturer;
 use App\Models\ReplenishmentMethod;
 use App\Models\GLAccount;
+use App\Models\Permission;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Import\ImportData\DataExport;
@@ -341,37 +342,88 @@ class ImportDataController extends Controller
         $fieldArr = [];
         $i = 0;
         $fields = [];
-        foreach($columns as $column) {
-            if(in_array($column->Field,$notNeededColumns)){
-                continue;
-            }
-            // if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at' || $column->Field == 'api_token' || $column->Field == 'password'){
-            //     continue;
-            // }
-            $col = explode('_',$column->Field);
-            if(isset($col[2]) && $col[2] == 'id'){
-                $column->Field = $col[0].'_'.$col[1].'_name';
-            }else if(isset($col[1]) && $col[1] == 'id'){
-                if($col[0] ==  'customer'){
-                    $column->Field = $col[0].'_number';
-                }else if($col[0] ==  'component'){
-                    $column->Field = $col[0].'_code';
-                }else if($col[0] ==  'vehicle'){
-                    $column->Field = 'unit_number';
-                }else{
-                    $column->Field = $col[0].'_name';
+        if ($module == 'Permission'){
+            $roles = Role::all();
+
+            $permissionData = Permission::join("modules as m","m.id","=","permissions.module_id")
+                                        ->select("m.name as module_name","permissions.*")
+                                        ->orderby("permissions.module_id")
+                                        ->orderby("permissions.id")
+                                        ->whereNull("permissions.deleted_at")
+                                        ->get();                           
+
+            $assetHeader = [];
+            $data = array();
+
+            if ( isset($permissionData) ) {
+
+                $module_id = 0;
+                $i = 0;
+                $moduleArray = [];
+                foreach($permissionData as $per_data){
+                
+                    $cust_param = [];
+                    $cust_param[] = ucFirst($per_data->module_name);
+                    $cust_param[] = str_replace("_"," ",$per_data->name);
+
+                    if (isset($roles[0])){
+                        foreach($roles as $role){
+
+                            if ( $role->hasPermissionTo($per_data->name)){
+                                array_push($cust_param,1);
+                            }else{
+                                array_push($cust_param,'0');
+                            }
+                        }
+                    }
+                    array_push($fieldArr,$cust_param);
                 }
             }
-            if($column->Field == 'timezone'){
-                $param[$column->Field] = 'PST8PDT';
-            }else{
-                $param[$column->Field] = '';
-            }
-            $i++;
 
-            array_push($fields ,$column->Field);
+            $fields[] = 'Module';
+            $fields[] = 'Permission';
+
+            if (isset($roles[0])){
+                foreach($roles as $role){
+
+                    array_push($fields,ucFirst($role->name));
+                    
+                }
+            }
+
+        }else{
+            foreach($columns as $column) {
+                if(in_array($column->Field,$notNeededColumns)){
+                    continue;
+                }
+                // if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at' || $column->Field == 'api_token' || $column->Field == 'password'){
+                //     continue;
+                // }
+                $col = explode('_',$column->Field);
+                if(isset($col[2]) && $col[2] == 'id'){
+                    $column->Field = $col[0].'_'.$col[1].'_name';
+                }else if(isset($col[1]) && $col[1] == 'id'){
+                    if($col[0] ==  'customer'){
+                        $column->Field = $col[0].'_number';
+                    }else if($col[0] ==  'component'){
+                        $column->Field = $col[0].'_code';
+                    }else if($col[0] ==  'vehicle'){
+                        $column->Field = 'unit_number';
+                    }else{
+                        $column->Field = $col[0].'_name';
+                    }
+                }
+                if($column->Field == 'timezone'){
+                    $param[$column->Field] = 'PST8PDT';
+                }else{
+                    $param[$column->Field] = '';
+                }
+                $i++;
+    
+                array_push($fields ,$column->Field);
+            }
+            array_push($fieldArr,$param);
         }
-        array_push($fieldArr,$param);
 
         $data = $fieldArr;
         $fileName = $module.'.xlsx';
@@ -392,8 +444,8 @@ class ImportDataController extends Controller
         // chmod($excel['full'], 0777);
 
 //        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-        $domainName = env('HOST');
-        $excel['web'] =  $domainName . '/api/exports/' . $fileName;
+        $domainName = env('BACKEND_HOST');
+        $excel['web'] =  $domainName . '/exports/' . $fileName;
 
         $response['code'] = 200;
         $response["status"] = "success";
