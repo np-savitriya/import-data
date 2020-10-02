@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 use App\User;
 use App\Util;
 use Validator;
-use App\Models\Role;
+use Spatie\Permission\Models\Role;
 use App\Models\VehicleGroup;
 use App\Models\Location;
 use App\Models\Asset;
@@ -41,12 +41,13 @@ use App\Models\ComponentCategory;
 use App\Models\ComponentManufacturer;
 use App\Models\ReplenishmentMethod;
 use App\Models\GLAccount;
-use App\Models\Permission;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Import\ImportData\DataExport;
 use Import\ImportData\DataImport;
 use Maatwebsite\Excel\HeadingRowImport;
+use Spatie\Permission\Models\Permission;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 // use Illuminate\Validation\Validator;
 
 
@@ -58,6 +59,7 @@ class ImportDataController extends Controller
             // $module = $file['module'];
             $file = $request->file('myFile');
             $mod = $request->input('module');
+            $moduleName = $request->input('module');
 
             $fileName = $request->input('fileName');
             $unitNo = 0;
@@ -167,43 +169,71 @@ class ImportDataController extends Controller
                 
                 $i = 0;
                 $j = 0;
-           
-                foreach($columns as $column) {
-                    if(in_array($column->Field,$notNeededColumns)){
-                        continue;
-                    }
-                    // if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at' || $column->Field == 'password' || $column->Field == 'api_token'){
-                    //     continue;
-                    // }
-                    $col = explode('_',$column->Field);
-                    if(isset($col[2]) && $col[2] == 'id'){
-                        $column->Field = $col[0].'_'.$col[1].'_name';
-                    }else if(isset($col[1]) && $col[1] == 'id'){
-                        if($col[0] == 'customer'){
-                            $column->Field = $col[0].'_number';
-                        }else if($col[0] == 'vehicle'){
-                            $column->Field = 'unit_number';
-                        }else if($col[0] == 'component'){
-                            $column->Field = $col[0].'_code';
-                        }else{
-                            $column->Field = $col[0].'_name';
-                        }
-                        
-                    }
-                    if($column->Null == 'NO'){
-                        $param['table_fields'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
-                        $param['table_fields'][$i]['value'] = $column->Field;
-                        $param['table_fields'][$i]['type'] = 'required';
-                        $param['table_fields'][$i]['default'] = $column->Default;
-                        // $i++;
-                    }else{
-                        $param['table_fields'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
-                        $param['table_fields'][$i]['value'] = $column->Field;
-                        $param['table_fields'][$i]['type'] = 'optional';
-                        $param['table_fields'][$i]['default'] = $column->Default;
-                    }
+                if (strtolower($moduleName) == 'permission'){
+                    $roles = Role::all();
+                    $param['table_fields'][$i]['name'] = 'Module';
+                    $param['table_fields'][$i]['value'] = 'Module';
+                    $param['table_fields'][$i]['type'] = 'required';
+                    $param['table_fields'][$i]['default'] = '';
+
                     $i++;
+                    $param['table_fields'][$i]['name'] = 'Permission';
+                    $param['table_fields'][$i]['value'] = 'Permission';
+                    $param['table_fields'][$i]['type'] = 'required';
+                    $param['table_fields'][$i]['default'] = '';
+                    
+                    $i++;
+                    if (isset($roles[0])){
+                        foreach($roles as $role){
+        
+                            $param['table_fields'][$i]['name'] = ucFirst($role->name);
+                            $param['table_fields'][$i]['value'] = ucFirst($role->name);
+                            $param['table_fields'][$i]['type'] = 'required';
+                            $param['table_fields'][$i]['default'] = '';
+
+                            $i++;
+                        }
+                    }
+                }else{
+
+                    foreach($columns as $column) {
+                        if(in_array($column->Field,$notNeededColumns)){
+                            continue;
+                        }
+                        // if($column->Field == 'id' || $column->Field == 'created_by' || $column->Field == 'updated_by' || $column->Field == 'deleted_at' || $column->Field == 'deleted_by' || $column->Field == 'created_at' || $column->Field == 'updated_at' || $column->Field == 'password' || $column->Field == 'api_token'){
+                        //     continue;
+                        // }
+                        $col = explode('_',$column->Field);
+                        if(isset($col[2]) && $col[2] == 'id'){
+                            $column->Field = $col[0].'_'.$col[1].'_name';
+                        }else if(isset($col[1]) && $col[1] == 'id'){
+                            if($col[0] == 'customer'){
+                                $column->Field = $col[0].'_number';
+                            }else if($col[0] == 'vehicle'){
+                                $column->Field = 'unit_number';
+                            }else if($col[0] == 'component'){
+                                $column->Field = $col[0].'_code';
+                            }else{
+                                $column->Field = $col[0].'_name';
+                            }
+                            
+                        }
+                        if($column->Null == 'NO'){
+                            $param['table_fields'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                            $param['table_fields'][$i]['value'] = $column->Field;
+                            $param['table_fields'][$i]['type'] = 'required';
+                            $param['table_fields'][$i]['default'] = $column->Default;
+                            // $i++;
+                        }else{
+                            $param['table_fields'][$i]['name'] = str_replace('_',' ',ucFirst($column->Field));
+                            $param['table_fields'][$i]['value'] = $column->Field;
+                            $param['table_fields'][$i]['type'] = 'optional';
+                            $param['table_fields'][$i]['default'] = $column->Default;
+                        }
+                        $i++;
+                    }
                 }
+                
                 
                 if(isset($param)){
                     $selectArr = [];
@@ -345,7 +375,7 @@ class ImportDataController extends Controller
         if ($module == 'Permission'){
             $roles = Role::all();
 
-            $permissionData = Permission::join("modules as m","m.id","=","permissions.module_id")
+            $permissionData = \App\Models\Permission::join("modules as m","m.id","=","permissions.module_id")
                                         ->select("m.name as module_name","permissions.*")
                                         ->orderby("permissions.module_id")
                                         ->orderby("permissions.id")
@@ -489,11 +519,62 @@ class ImportDataController extends Controller
                 $path = $fileName;
                 // $reader = Excel::load($path)->get();
 //                echo $path;exit;
-
+                ini_set('memory_limit', '-1');
+                ini_set('max_execution_time', 300);
                 $reader = Excel::toArray(new DataImport, $path, null, \Maatwebsite\Excel\Excel::XLSX);
 
                 // $singleRow = $reader->toArray(); // no need to parse whole sheet for the headings
                 // $headings['headers'] = $reader->getHeading();
+                // to import grant permission sheet
+                if ($modu == 'permission'){
+                    if(isset($reader[0])){
+                        foreach($reader[0] as $head){
+
+                            $keys = array_keys($head);
+                            
+                            if ( isset($keys[0])){
+                                foreach($keys as $key){
+                                    // check only rola data and set or revoke permission
+                                    if (strtolower($key) == 'module' || strtolower($key) == 'permission' || strtolower($key) == ''){
+                                        continue;
+                                    }else{
+                                        $rname = strtolower($key);
+                                        $role = Role::where('name',$rname)->first();
+                                        if (!isset($role->id)){
+                                            $role = new Role();
+                                            $role->name = $rname;
+                                            $role->guard_name = 'api';
+                                            $role->save();
+                                        }
+                                        if ($head[$key] == 1){
+                                            
+                                            $role->givePermissionTo(str_replace(' ','_',$head['permission']));
+
+                                        }else{
+
+                                            $role->revokePermissionTo(str_replace(' ','_',$head['permission']));
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        $response['code'] = 200;
+                        $response['message'] = 'Data imported';
+                        $response["status"] = "success";
+                        $response["content"] = '';
+                        $response['error_count'] = '';
+                    } else {
+                        $response['code'] = 201;
+                        $response['message'] = 'Make Sure The Sheet is for Relavant Module';
+                        $response["status"] = "success";
+                        $response["content"] = '';
+                    }
+
+                    return response($response, $response['code'])
+                            ->header('Content_type', 'application/json');
+                }
                 $headArr = [];
                 $excelArr = [];
                 $mapArr = [];
@@ -670,7 +751,7 @@ class ImportDataController extends Controller
                                         
                                     }
                                     if($selectArr[$j]->value == 'role_name'){
-                                        $grId = Role::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
+                                        $grId = \App\Models\Role::where('name','like',$head[$selectArr[$j]->value])->pluck('id')->first();
                                         $mod->role_id = $grId;
                                     }
                                     if($selectArr[$j]->value == 'city_name'){
@@ -778,7 +859,7 @@ class ImportDataController extends Controller
                                         $mod->group_id = $grId;
                                     }
                                     if($selectArr[$j]->text->value == 'role_name'){
-                                        $rlId = Role::where('name','like',$head[$selectArr[$j]->text->value])->pluck('id')->first();
+                                        $rlId = \App\Models\Role::where('name','like',$head[$selectArr[$j]->text->value])->pluck('id')->first();
                                         $mod->role_id = $rlId;
                                     }
                                     if($selectArr[$j]->text->value == 'city_name'){
